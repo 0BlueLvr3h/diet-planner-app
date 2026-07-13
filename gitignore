@@ -1,0 +1,20 @@
+# Dipendenze (si reinstallano con npm install)
+node_modules/
+server/node_modules/
+
+# Build del frontend (si rigenera con npm run build)
+dist/
+
+# Log e file di sistema
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Variabili d'ambiente / segreti
+.env
+.env.*
+
+# Chiavi SSH e file sensibili (non devono MAI finire su GitHub)
+*.key
+*.pem
