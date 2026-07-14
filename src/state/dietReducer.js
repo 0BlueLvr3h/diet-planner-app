@@ -99,7 +99,8 @@ export function createDefaultState() {
     variants: [seedVariant],
     activeVariantId: seedVariant.id,
     customFoods: [],
-    barcodeFoods: []
+    barcodeFoods: [],
+    weekAssignments: {}
   };
 }
 
@@ -116,7 +117,8 @@ export function normalizeAppState(candidate) {
     variants: candidate.variants,
     activeVariantId,
     customFoods: normalizeCustomFoods(candidate.customFoods ?? []),
-    barcodeFoods: normalizeBarcodeFoods(candidate.barcodeFoods ?? [])
+    barcodeFoods: normalizeBarcodeFoods(candidate.barcodeFoods ?? []),
+    weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {}
   };
 }
 
@@ -156,6 +158,14 @@ export function dietReducer(state, action) {
 
     case 'RESET_STATE': {
       return createDefaultState();
+    }
+
+    case 'SET_DAY_VARIANT': {
+      const { day, variantId } = action.payload;
+      return {
+        ...state,
+        weekAssignments: { ...(state.weekAssignments ?? {}), [day]: variantId || null }
+      };
     }
 
     case 'SET_TARGET': {

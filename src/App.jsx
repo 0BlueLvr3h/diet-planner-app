@@ -8,6 +8,7 @@ import PersistencePanel from './components/PersistencePanel';
 import SaveBar from './components/SaveBar';
 import TargetEditor from './components/TargetEditor';
 import VariantTabs from './components/VariantTabs';
+import WeekPlanner from './components/WeekPlanner';
 import { BARCODE_BACKEND_URL, ENABLE_BARCODE_STREAM } from './constants';
 import { createInitialState, dietReducer } from './state/dietReducer';
 import { getOpenFoodFactsProductByBarcode } from './services/openFoodFacts';
@@ -345,6 +346,10 @@ export default function App({ username, onLogout }) {
 
         {section === 'barcode' && (
           <BarcodeFoodMenu barcodeFoods={state.barcodeFoods} variants={state.variants} dispatch={dispatchTracked} />
+        )}
+
+        {section === 'week' && (
+          <WeekPlanner weekAssignments={state.weekAssignments} variants={state.variants} dispatch={dispatchTracked} />
         )}
 
         {section === 'settings' && (

@@ -33,7 +33,8 @@ function normalizePersistedState(raw) {
       : [],
     barcodeFoods: Array.isArray(candidate.barcodeFoods)
       ? candidate.barcodeFoods.map(normalizeBarcodeFood)
-      : []
+      : [],
+    weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {}
   };
 }
 
@@ -48,7 +49,8 @@ export function buildPersistedDocument(state) {
       variants: state.variants,
       activeVariantId: state.activeVariantId,
       customFoods: state.customFoods ?? [],
-      barcodeFoods: state.barcodeFoods ?? []
+      barcodeFoods: state.barcodeFoods ?? [],
+      weekAssignments: state.weekAssignments ?? {}
     })
   };
 }

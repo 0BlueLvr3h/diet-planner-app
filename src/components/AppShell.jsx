@@ -3,6 +3,7 @@ import { useState } from 'react';
 const NAV = [
   { id: 'diet', label: 'Dieta' },
   { id: 'barcode', label: 'Barcode' },
+  { id: 'week', label: 'Settimana' },
   { id: 'settings', label: 'Impostazioni' },
 ];
 
