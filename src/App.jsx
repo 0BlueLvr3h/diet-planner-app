@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
+import AppShell from './components/AppShell';
 import BarcodeFoodMenu from './components/BarcodeFoodMenu';
 import DiffPanel from './components/DiffPanel';
 import FoodSearchModal from './components/FoodSearchModal';
@@ -15,6 +16,7 @@ import { apiGetState, apiPutState } from './services/api';
 
 export default function App({ username, onLogout }) {
   const [state, dispatch] = useReducer(dietReducer, undefined, createInitialState);
+  const [section, setSection] = useState('diet');
   const [searchContext, setSearchContext] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [lastSavedAt, setLastSavedAt] = useState(() => getStoredMetadata()?.savedAt ?? null);
@@ -75,8 +77,6 @@ export default function App({ username, onLogout }) {
 
   // Ponte col backend: ogni barcode scansionato dal telefono viene cercato su
   // Open Food Facts e finisce nel catalogo "Alimenti da barcode".
-  // Disattivabile da constants.js (ENABLE_BARCODE_STREAM). Se il backend non gira
-  // l'app resta pienamente funzionante: EventSource ritenta da solo.
   useEffect(() => {
     if (!ENABLE_BARCODE_STREAM) return undefined;
 
@@ -209,78 +209,62 @@ export default function App({ username, onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4 py-8 text-white lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-sm text-slate-300">
-              Ciao, <span className="font-semibold text-white">{username}</span>
-            </span>
-            <button
-              onClick={onLogout}
-              className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20"
-            >
-              Esci
-            </button>
-          </div>
-          <div className="mt-4 max-w-3xl">
-            <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-indigo-100 ring-1 ring-white/10">
-              Web App modelli dieta · Varianti · Swap · Open Food Facts
-            </span>
-            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Diet Planner Variants
-            </h1>
-            <p className="mt-3 text-lg text-slate-300">
-              Non un diario giornaliero, ma un sistema per creare modelli alimentari stabili, duplicabili e modificabili con compensazione macro in tempo reale.
-            </p>
-          </div>
-        </div>
-      </header>
+    <>
+      <AppShell section={section} onSectionChange={setSection} username={username} onLogout={onLogout}>
+        {section === 'diet' && (
+          <>
+            <DiffPanel target={state.target} totals={totals} diff={diff} tolerance={state.tolerance} />
+            <VariantTabs variants={state.variants} activeVariantId={state.activeVariantId} dispatch={dispatch} />
 
-      <main className="mx-auto -mt-5 max-w-7xl space-y-5 px-4 pb-12 lg:px-8">
-        <TargetEditor target={state.target} tolerance={state.tolerance} dispatch={dispatch} />
-        <DiffPanel target={state.target} totals={totals} diff={diff} tolerance={state.tolerance} />
-        <PersistencePanel
-          state={state}
-          saveStatus={saveStatus}
-          lastSavedAt={lastSavedAt}
-          storageError={storageError}
-          onImportState={importState}
-          onResetState={resetState}
-        />
-        <VariantTabs variants={state.variants} activeVariantId={state.activeVariantId} dispatch={dispatch} />
+            <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between lg:p-5">
+              <div>
+                <h2 className="text-lg font-black text-slate-950">Variante attiva: {activeVariant?.name}</h2>
+                <p className="text-sm text-slate-500">
+                  Trascina le card alimento da un pasto all'altro per riorganizzare il modello.
+                </p>
+              </div>
+              <button onClick={addMeal} className="btn-secondary">Aggiungi pasto</button>
+            </section>
 
-        <BarcodeFoodMenu barcodeFoods={state.barcodeFoods} variants={state.variants} dispatch={dispatch} />
+            <div className="space-y-5">
+              {activeVariant?.meals.map((meal) => (
+                <MealCard
+                  key={meal.id}
+                  meal={meal}
+                  dispatch={dispatch}
+                  onAddFood={openAddFood}
+                  onSwap={openSwapFood}
+                  onFoodDragStart={handleFoodDragStart}
+                  onFoodDragEnd={handleFoodDragEnd}
+                  onMealDragOver={handleMealDragOver}
+                  onMealDrop={handleMealDrop}
+                  onMealDragLeave={handleMealDragLeave}
+                  isDropTarget={dropTargetMealId === meal.id}
+                  isDraggingFromThisMeal={draggedFood?.mealId === meal.id}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
-        <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between lg:p-5">
-          <div>
-            <h2 className="text-lg font-black text-slate-950">Variante attiva: {activeVariant?.name}</h2>
-            <p className="text-sm text-slate-500">
-              Trascina le card alimento da un pasto all'altro per riorganizzare il modello.
-            </p>
-          </div>
-          <button onClick={addMeal} className="btn-secondary">Aggiungi pasto</button>
-        </section>
+        {section === 'barcode' && (
+          <BarcodeFoodMenu barcodeFoods={state.barcodeFoods} variants={state.variants} dispatch={dispatch} />
+        )}
 
-        <div className="space-y-5">
-          {activeVariant?.meals.map((meal) => (
-            <MealCard
-              key={meal.id}
-              meal={meal}
-              dispatch={dispatch}
-              onAddFood={openAddFood}
-              onSwap={openSwapFood}
-              onFoodDragStart={handleFoodDragStart}
-              onFoodDragEnd={handleFoodDragEnd}
-              onMealDragOver={handleMealDragOver}
-              onMealDrop={handleMealDrop}
-              onMealDragLeave={handleMealDragLeave}
-              isDropTarget={dropTargetMealId === meal.id}
-              isDraggingFromThisMeal={draggedFood?.mealId === meal.id}
+        {section === 'settings' && (
+          <>
+            <TargetEditor target={state.target} tolerance={state.tolerance} dispatch={dispatch} />
+            <PersistencePanel
+              state={state}
+              saveStatus={saveStatus}
+              lastSavedAt={lastSavedAt}
+              storageError={storageError}
+              onImportState={importState}
+              onResetState={resetState}
             />
-          ))}
-        </div>
-      </main>
+          </>
+        )}
+      </AppShell>
 
       <FoodSearchModal
         open={Boolean(searchContext)}
@@ -292,6 +276,6 @@ export default function App({ username, onLogout }) {
         onDeleteCustomFood={(foodId) => dispatch({ type: 'DELETE_CUSTOM_FOOD', payload: { foodId } })}
         onBarcodeFoodFound={(food) => dispatch({ type: 'UPSERT_BARCODE_FOOD', payload: { food } })}
       />
-    </div>
+    </>
   );
 }

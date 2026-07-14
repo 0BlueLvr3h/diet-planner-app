@@ -17,7 +17,7 @@ export default function DiffPanel({ target, totals, diff, tolerance }) {
   );
 
   return (
-    <section className="sticky top-3 z-30 rounded-3xl border border-slate-700 bg-slate-900/95 p-4 text-white shadow-soft backdrop-blur lg:p-5">
+    <section className="sticky top-16 z-30 lg:top-3 rounded-3xl border border-slate-700 bg-slate-900/95 p-4 text-white shadow-soft backdrop-blur lg:p-5">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
