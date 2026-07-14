@@ -5,6 +5,11 @@ server/node_modules/
 # Build del frontend (si rigenera con npm run build)
 dist/
 
+# Database: dati sul server, NON su GitHub
+server/*.db
+server/*.db-shm
+server/*.db-wal
+
 # Log e file di sistema
 *.log
 npm-debug.log*
