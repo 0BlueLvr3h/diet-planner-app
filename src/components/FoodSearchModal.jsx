@@ -9,6 +9,7 @@ import {
   validateCustomFoodForm
 } from '../utils/customFoods';
 import { normalizeBarcodeFoods } from '../utils/barcodeFoods';
+import BarcodeScanner, { isBarcodeScanSupported } from './BarcodeScanner';
 import { roundMacro } from '../utils/macros';
 
 const SEARCH_PAGE_SIZE = 30;
@@ -308,6 +309,7 @@ export default function FoodSearchModal({
   onBarcodeFoodFound
 }) {
   const [query, setQuery] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [creating, setCreating] = useState(false);
   const [apiResults, setApiResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -323,6 +325,7 @@ export default function FoodSearchModal({
 
   const title = useMemo(() => (mode === 'swap' ? 'Swap alimento' : 'Aggiungi alimento'), [mode]);
   const isBarcodeQuery = looksLikeBarcode(query);
+  const canScan = isBarcodeScanSupported();
 
   // I miei alimenti = creati a mano + scansionati col telefono.
   // Sono gia' in memoria, quindi li filtro dal vivo mentre scrivi: nessuna chiamata di rete.
@@ -344,6 +347,7 @@ export default function FoodSearchModal({
     if (!open) return;
 
     setQuery('');
+    setScanning(false);
     setCreating(false);
     setApiResults([]);
     setError('');
@@ -360,7 +364,7 @@ export default function FoodSearchModal({
   if (!open) return null;
 
   async function runSearch(pageOverride = 1, overrides = {}) {
-    const term = query.trim();
+    const term = (overrides.term ?? query).trim();
     if (!term) return;
 
     const asBarcode = looksLikeBarcode(term);
@@ -414,6 +418,15 @@ export default function FoodSearchModal({
   function handleSubmit(event) {
     event.preventDefault();
     runSearch(1);
+  }
+
+  // Codice letto dalla fotocamera: lo metto nel campo e cerco subito il prodotto.
+  // Passo il termine esplicito perche' setQuery non e' ancora visibile a runSearch.
+  function handleScanned(code) {
+    setScanning(false);
+    setQuery(code);
+    setError('');
+    runSearch(1, { term: code });
   }
 
   function revealLowRelevance() {
@@ -478,6 +491,20 @@ export default function FoodSearchModal({
               placeholder="Nome prodotto o codice a barre..."
               className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
             />
+            {canScan && (
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                aria-label="Scansiona un codice a barre"
+                title="Scansiona un codice a barre"
+                className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 text-slate-600 transition hover:bg-slate-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" strokeLinecap="round" />
+                  <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading || !query.trim()}
@@ -657,6 +684,8 @@ export default function FoodSearchModal({
           )}
         </main>
       </div>
+
+      <BarcodeScanner open={scanning} onClose={() => setScanning(false)} onDetect={handleScanned} />
     </div>
   );
 }
