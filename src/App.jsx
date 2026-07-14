@@ -349,7 +349,15 @@ export default function App({ username, onLogout }) {
         )}
 
         {section === 'week' && (
-          <WeekPlanner weekAssignments={state.weekAssignments} variants={state.variants} dispatch={dispatchTracked} />
+          <WeekPlanner
+            weekAssignments={state.weekAssignments}
+            variants={state.variants}
+            dispatch={dispatchTracked}
+            onOpenVariant={(variantId) => {
+              dispatchTracked({ type: 'SET_ACTIVE_VARIANT', payload: { variantId } });
+              setSection('diet');
+            }}
+          />
         )}
 
         {section === 'settings' && (
