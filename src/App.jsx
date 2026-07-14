@@ -10,9 +10,10 @@ import { BARCODE_BACKEND_URL, ENABLE_BARCODE_STREAM } from './constants';
 import { createInitialState, dietReducer } from './state/dietReducer';
 import { getOpenFoodFactsProductByBarcode } from './services/openFoodFacts';
 import { calculateDiff, calculateVariantTotals } from './utils/macros';
-import { getStoredMetadata, saveStateToStorage } from './utils/storage';
+import { buildPersistedDocument, getStoredMetadata, parseImportedDietState, saveStateToStorage } from './utils/storage';
+import { apiGetState, apiPutState } from './services/api';
 
-export default function App() {
+export default function App({ username, onLogout }) {
   const [state, dispatch] = useReducer(dietReducer, undefined, createInitialState);
   const [searchContext, setSearchContext] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
@@ -20,6 +21,7 @@ export default function App() {
   const [storageError, setStorageError] = useState('');
   const [draggedFood, setDraggedFood] = useState(null);
   const [dropTargetMealId, setDropTargetMealId] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const activeVariant = useMemo(
     () => state.variants.find((variant) => variant.id === state.activeVariantId) ?? state.variants[0],
@@ -29,25 +31,47 @@ export default function App() {
   const totals = useMemo(() => calculateVariantTotals(activeVariant), [activeVariant]);
   const diff = useMemo(() => calculateDiff(state.target, totals), [state.target, totals]);
 
-  // Autosave con debounce: evita di scrivere in localStorage a ogni singolo keypress.
+  // Al login carico lo stato salvato sul server per questo utente.
+  // Finche' non ho finito blocco l'autosave (hydrated=false), cosi' non
+  // sovrascrivo i dati del server con lo stato iniziale locale.
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const doc = await apiGetState();
+      if (!cancelled && doc) {
+        try {
+          dispatch({ type: 'HYDRATE_STATE', payload: parseImportedDietState(JSON.stringify(doc)) });
+        } catch {
+          // stato server assente o non valido: tengo lo stato locale iniziale
+        }
+      }
+      if (!cancelled) setHydrated(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Autosave con debounce: salva sul server (per utente) + cache locale.
+  useEffect(() => {
+    if (!hydrated) return undefined; // non salvare prima del caricamento iniziale
     setSaveStatus('saving');
 
-    const timeoutId = window.setTimeout(() => {
-      const result = saveStateToStorage(state);
+    const timeoutId = window.setTimeout(async () => {
+      const doc = buildPersistedDocument(state);
+      saveStateToStorage(state); // cache locale (offline / backup)
+      const ok = await apiPutState(doc);
 
-      if (result.ok) {
+      if (ok) {
         setSaveStatus('saved');
-        setLastSavedAt(result.savedAt);
+        setLastSavedAt(doc.savedAt);
         setStorageError('');
       } else {
         setSaveStatus('error');
-        setStorageError('Non riesco a salvare in localStorage. Controlla spazio disponibile o permessi browser.');
+        setStorageError('Non riesco a salvare sul server. Controlla la connessione.');
       }
     }, 600);
 
     return () => window.clearTimeout(timeoutId);
-  }, [state]);
+  }, [state, hydrated]);
 
   // Ponte col backend: ogni barcode scansionato dal telefono viene cercato su
   // Open Food Facts e finisce nel catalogo "Alimenti da barcode".
@@ -188,7 +212,18 @@ export default function App() {
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <header className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4 py-8 text-white lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-sm text-slate-300">
+              Ciao, <span className="font-semibold text-white">{username}</span>
+            </span>
+            <button
+              onClick={onLogout}
+              className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20"
+            >
+              Esci
+            </button>
+          </div>
+          <div className="mt-4 max-w-3xl">
             <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-indigo-100 ring-1 ring-white/10">
               Web App modelli dieta · Varianti · Swap · Open Food Facts
             </span>
