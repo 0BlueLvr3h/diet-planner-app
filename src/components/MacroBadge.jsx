@@ -27,3 +27,23 @@ export default function MacroBadge({ macroKey, value, tone = 'neutral', compact 
     </div>
   );
 }
+
+const SHORT = { protein: 'P', carbs: 'C', fat: 'G' };
+
+// Riga compatta dei macro: sostituisce i quattro riquadri dove lo spazio verticale
+// conta (telefono). Stessa convenzione della vista Settimana.
+export function MacroLine({ macros, className = '' }) {
+  return (
+    <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm ${className}`}>
+      <span className="whitespace-nowrap">
+        <span className="font-black text-slate-900">{roundMacro(macros?.kcal)}</span>
+        <span className="text-slate-400"> kcal</span>
+      </span>
+      {['protein', 'carbs', 'fat'].map((key) => (
+        <span key={key} className="whitespace-nowrap text-slate-400">
+          {SHORT[key]} <span className="font-bold text-slate-700">{roundMacro(macros?.[key])}</span>g
+        </span>
+      ))}
+    </div>
+  );
+}

@@ -1,10 +1,10 @@
-import { MACRO_KEYS } from '../constants';
 import FoodCard from './FoodCard';
-import MacroBadge from './MacroBadge';
+import { MacroLine } from './MacroBadge';
 import { calculateMealTotals } from '../utils/macros';
 
 export default function MealCard({
   meal,
+  meals = [],
   dispatch,
   onAddFood,
   onSwap,
@@ -17,6 +17,7 @@ export default function MealCard({
   isDraggingFromThisMeal = false
 }) {
   const totals = calculateMealTotals(meal);
+  const count = meal.foods.length;
 
   return (
     <section
@@ -31,27 +32,24 @@ export default function MealCard({
             : 'border-slate-200 bg-slate-50'
       }`}
     >
-      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-xl font-black text-slate-950">{meal.name}</h2>
           <p className="text-sm text-slate-500">
-            {meal.foods.length} alimenti nel blocco · trascina qui una card per spostarla
+            {count} aliment{count === 1 ? 'o' : 'i'}
           </p>
+          <MacroLine macros={totals} className="mt-1.5" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {MACRO_KEYS.map((key) => (
-            <MacroBadge key={key} macroKey={key} value={totals[key]} compact />
-          ))}
-          <button onClick={() => onAddFood(meal.id)} className="btn-primary ml-0 xl:ml-2">
-            Aggiungi alimento
-          </button>
-        </div>
+        <button onClick={() => onAddFood(meal.id)} className="btn-primary shrink-0">
+          Aggiungi alimento
+        </button>
       </div>
 
       <div className="space-y-3">
-        {meal.foods.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500">
-            Nessun alimento in questo pasto. Usa “Aggiungi alimento” o trascina qui una card da un altro pasto.
+        {count === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            Nessun alimento in questo pasto. Usa “Aggiungi alimento”, oppure spostane uno da un altro
+            pasto con il menu “Sposta”.
           </div>
         ) : (
           meal.foods.map((food) => (
@@ -59,6 +57,7 @@ export default function MealCard({
               key={food.id}
               food={food}
               mealId={meal.id}
+              meals={meals}
               dispatch={dispatch}
               onSwap={onSwap}
               onDragStart={onFoodDragStart}

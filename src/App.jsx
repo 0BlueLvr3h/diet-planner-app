@@ -348,6 +348,7 @@ export default function App({ username, onLogout }) {
                 <MealCard
                   key={meal.id}
                   meal={meal}
+                  meals={activeVariant.meals}
                   dispatch={dispatchTracked}
                   onAddFood={openAddFood}
                   onSwap={openSwapFood}
