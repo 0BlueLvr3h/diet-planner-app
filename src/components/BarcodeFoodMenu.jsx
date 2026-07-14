@@ -151,33 +151,47 @@ function BarcodeFoodRow({ food, variants, dispatch }) {
   );
 }
 
-export default function BarcodeFoodMenu({ barcodeFoods = [], variants = [], dispatch }) {
+export default function BarcodeFoodMenu({ barcodeFoods = [], variants = [], dispatch, onScan }) {
   const [open, setOpen] = useState(true);
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-soft lg:p-5">
-      <button
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 text-left"
-      >
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="min-w-0 flex-1 text-left"
+        >
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950">
             Alimenti da barcode
             <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-sm font-bold text-indigo-700">
               {barcodeFoods.length}
             </span>
+            <span className="text-sm text-slate-400">{open ? '▲' : '▼'}</span>
           </h2>
           <p className="text-sm text-slate-500">
             I prodotti trovati tramite codice a barre. Assegnali a una variante e a un pasto.
           </p>
-        </div>
-        <span className="text-slate-400">{open ? '▲' : '▼'}</span>
-      </button>
+        </button>
+      </div>
+
+      {onScan && (
+        <button
+          type="button"
+          onClick={onScan}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 active:scale-[0.99]"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" strokeLinecap="round" />
+            <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8" strokeLinecap="round" />
+          </svg>
+          Scansiona un prodotto
+        </button>
+      )}
 
       {open ? (
         barcodeFoods.length === 0 ? (
           <p className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            Ancora nessun alimento. Cerca un prodotto per codice a barre (o scansionane uno dal telefono):
+            Ancora nessun alimento. Tocca “Scansiona un prodotto” e inquadra il codice a barre:
             comparirà qui, pronto da assegnare a una variante.
           </p>
         ) : (

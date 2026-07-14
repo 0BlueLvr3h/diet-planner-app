@@ -9,7 +9,7 @@ import {
   validateCustomFoodForm
 } from '../utils/customFoods';
 import { normalizeBarcodeFoods } from '../utils/barcodeFoods';
-import BarcodeScanner, { isBarcodeScanSupported } from './BarcodeScanner';
+import BarcodeScanner from './BarcodeScanner';
 import { roundMacro } from '../utils/macros';
 
 const SEARCH_PAGE_SIZE = 30;
@@ -63,10 +63,10 @@ function formatPageLabel(meta) {
 
 function ResultMacroRow({ food }) {
   return (
-    <div className="grid grid-cols-4 gap-2 text-xs">
+    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
       {MACRO_KEYS.map((key) => (
-        <div key={key} className="rounded-xl bg-slate-100 px-2 py-1 text-slate-700">
-          <span className="block font-semibold uppercase text-slate-400">{MACRO_LABELS[key]}</span>
+        <div key={key} className="min-w-0 rounded-xl bg-slate-100 px-2 py-1 text-slate-700">
+          <span className="block truncate font-semibold uppercase text-slate-400">{MACRO_LABELS[key]}</span>
           <span className="font-black">
             {formatMacroValue(food.macrosPer100g[key])} {MACRO_UNITS[key]}
           </span>
@@ -82,7 +82,7 @@ function FoodResultCard({ food, mode, onSelect, onDeleteCustomFood }) {
     : 'border-slate-200 bg-white';
 
   return (
-    <article className={`rounded-3xl border p-4 shadow-sm ${relevanceClasses}`}>
+    <article className={`min-w-0 overflow-hidden rounded-3xl border p-4 shadow-sm ${relevanceClasses}`}>
       <div className="mb-3 flex gap-3">
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
           {food.image ? (
@@ -325,7 +325,6 @@ export default function FoodSearchModal({
 
   const title = useMemo(() => (mode === 'swap' ? 'Swap alimento' : 'Aggiungi alimento'), [mode]);
   const isBarcodeQuery = looksLikeBarcode(query);
-  const canScan = isBarcodeScanSupported();
 
   // I miei alimenti = creati a mano + scansionati col telefono.
   // Sono gia' in memoria, quindi li filtro dal vivo mentre scrivi: nessuna chiamata di rete.
@@ -480,7 +479,7 @@ export default function FoodSearchModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-4 flex gap-3">
+          <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap gap-2 sm:gap-3">
             <input
               value={query}
               onChange={(event) => {
@@ -489,26 +488,23 @@ export default function FoodSearchModal({
                 setError('');
               }}
               placeholder="Nome prodotto o codice a barre..."
-              className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
+              className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4 sm:w-auto sm:flex-1"
             />
-            {canScan && (
-              <button
-                type="button"
-                onClick={() => setScanning(true)}
-                aria-label="Scansiona un codice a barre"
-                title="Scansiona un codice a barre"
-                className="shrink-0 rounded-2xl border border-slate-200 bg-white px-3 text-slate-600 transition hover:bg-slate-50"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" strokeLinecap="round" />
-                  <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8" strokeLinecap="round" />
-                </svg>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:flex-none"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" strokeLinecap="round" />
+                <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8" strokeLinecap="round" />
+              </svg>
+              Scansiona
+            </button>
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="btn-primary shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
               {loading ? 'Cerco…' : 'Cerca'}
             </button>
@@ -584,7 +580,7 @@ export default function FoodSearchModal({
           )}
         </header>
 
-        <main className="overflow-y-auto p-4 lg:p-5">
+        <main className="overflow-y-auto overflow-x-hidden p-4 lg:p-5">
           {creating ? (
             <div className="space-y-4">
               <button
@@ -623,7 +619,7 @@ export default function FoodSearchModal({
                   <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-400">
                     I tuoi alimenti · {myFoods.length}
                   </h3>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {myFoods.map((food) => (
                       <FoodResultCard
                         key={`${food.source}-${food.id}-${food.barcode}`}
@@ -642,7 +638,7 @@ export default function FoodSearchModal({
                   <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-400">
                     Da Open Food Facts · {visibleApiResults.length}
                   </h3>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {visibleApiResults.map((food) => (
                       <FoodResultCard
                         key={`${food.source}-${food.id}-${food.barcode}`}

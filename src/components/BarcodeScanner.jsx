@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Formati che ci interessano per i prodotti alimentari.
 const WANTED_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
 
-// La Barcode Detection API esiste solo in contesti sicuri (HTTPS) e non su tutti
-// i browser: su desktop e su Safari di norma manca. Il pulsante va mostrato solo se c'e'.
-export function isBarcodeScanSupported() {
-  return typeof window !== 'undefined' && 'BarcodeDetector' in window;
+// Prima prova l'API nativa del browser; se manca (o c'e' ma non conosce formati,
+// capita quando il modulo di sistema non e' installato) carica il fallback ZXing.
+// Il fallback pesa, quindi lo importo solo quando serve davvero.
+async function loadDetector() {
+  if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+    try {
+      const formats = await window.BarcodeDetector.getSupportedFormats();
+      const usable = WANTED_FORMATS.filter((format) => formats.includes(format));
+      if (usable.length > 0) return { Detector: window.BarcodeDetector, formats: usable, native: true };
+    } catch {
+      // API presente ma rotta: uso il fallback.
+    }
+  }
+
+  const module = await import('barcode-detector/ponyfill');
+  const formats = await module.BarcodeDetector.getSupportedFormats();
+  const usable = WANTED_FORMATS.filter((format) => formats.includes(format));
+  return { Detector: module.BarcodeDetector, formats: usable, native: false };
 }
 
 export default function BarcodeScanner({ open, onClose, onDetect }) {
@@ -15,6 +28,7 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
   onDetectRef.current = onDetect;
 
   const [error, setError] = useState('');
+  const [starting, setStarting] = useState(true);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -25,19 +39,18 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
 
     async function start() {
       setError('');
+      setStarting(true);
 
       try {
-        // Chiedere formati non supportati dal dispositivo fa fallire il costruttore:
-        // tengo solo quelli che dichiara di conoscere.
-        const supported = await window.BarcodeDetector.getSupportedFormats();
-        const formats = WANTED_FORMATS.filter((format) => supported.includes(format));
-
+        const { Detector, formats } = await loadDetector();
+        if (stopped) return;
         if (formats.length === 0) {
-          setError('Questo dispositivo non riconosce i codici a barre dei prodotti.');
+          setError('Lettura dei codici a barre non disponibile su questo browser.');
+          setStarting(false);
           return;
         }
 
-        const detector = new window.BarcodeDetector({ formats });
+        const detector = new Detector({ formats });
 
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } }
@@ -52,8 +65,8 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
         if (!video) return;
         video.srcObject = stream;
         await video.play();
+        setStarting(false);
 
-        // ~6 letture al secondo: sufficienti e leggere sulla batteria.
         timer = window.setInterval(async () => {
           if (stopped || !videoRef.current) return;
           try {
@@ -66,21 +79,22 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
               onDetectRef.current?.(value);
             }
           } catch {
-            // Frame non leggibile: ignoro e riprovo al giro dopo.
+            // Frame non leggibile: riprovo al giro dopo.
           }
-        }, 160);
+        }, 180);
       } catch (cameraError) {
+        setStarting(false);
         setError(
           cameraError?.name === 'NotAllowedError'
             ? 'Permesso fotocamera negato. Abilitalo dalle impostazioni del browser e riprova.'
-            : 'Non riesco ad aprire la fotocamera.'
+            : "Non riesco ad aprire la fotocamera su questo browser."
         );
       }
     }
 
     start();
 
-    // Spegne sempre la fotocamera all'uscita: senza questo la spia resta accesa.
+    // Spegne sempre la fotocamera: senza questo la spia resta accesa.
     return () => {
       stopped = true;
       if (timer) window.clearInterval(timer);
@@ -94,13 +108,14 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
     <div className="fixed inset-0 z-[70] bg-black">
       <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
 
-      {/* Mirino: il riquadro chiaro al centro, tutto il resto scurito */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-44 w-72 rounded-2xl border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
+        <div className="h-44 w-72 max-w-[80vw] rounded-2xl border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
       </div>
 
       <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
-        <span className="text-sm font-semibold text-white drop-shadow">Inquadra il codice a barre</span>
+        <span className="text-sm font-semibold text-white drop-shadow">
+          {starting ? 'Avvio fotocamera…' : 'Inquadra il codice a barre'}
+        </span>
         <button
           type="button"
           onClick={onClose}
@@ -113,9 +128,7 @@ export default function BarcodeScanner({ open, onClose, onDetect }) {
       {error && (
         <div className="absolute inset-x-4 bottom-8 rounded-3xl bg-white p-5 text-center shadow-2xl">
           <p className="text-sm font-semibold text-slate-800">{error}</p>
-          <button type="button" onClick={onClose} className="btn-primary mt-4">
-            Chiudi
-          </button>
+          <button type="button" onClick={onClose} className="btn-primary mt-4">Chiudi</button>
         </div>
       )}
     </div>

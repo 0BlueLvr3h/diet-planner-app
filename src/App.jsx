@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import AppShell from './components/AppShell';
+import BarcodeScanner from './components/BarcodeScanner';
 import BarcodeFoodMenu from './components/BarcodeFoodMenu';
 import DiffPanel from './components/DiffPanel';
 import FoodSearchModal from './components/FoodSearchModal';
@@ -27,6 +28,8 @@ function readSaveMode() {
 export default function App({ username, onLogout }) {
   const [state, dispatch] = useReducer(dietReducer, undefined, createInitialState);
   const [section, setSection] = useState('diet');
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState('');
   const [searchContext, setSearchContext] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [lastSavedAt, setLastSavedAt] = useState(() => getStoredMetadata()?.savedAt ?? null);
@@ -188,6 +191,23 @@ export default function App({ username, onLogout }) {
     };
   }, []);
 
+  // Scansione dalla sezione Barcode: risolvo il codice su Open Food Facts
+  // e lo metto nel catalogo, senza passare dal modale di ricerca.
+  async function handleScanFromMenu(code) {
+    setScanning(false);
+    setScanError('');
+    try {
+      const product = await getOpenFoodFactsProductByBarcode(code);
+      if (product) {
+        dispatchTracked({ type: 'UPSERT_BARCODE_FOOD', payload: { food: product } });
+      } else {
+        setScanError(`Nessun prodotto trovato per il codice ${code}.`);
+      }
+    } catch {
+      setScanError('Ricerca non riuscita. Controlla la connessione.');
+    }
+  }
+
   async function handleSaveNow() {
     setSaveStatus('saving');
     await doSave();
@@ -345,7 +365,19 @@ export default function App({ username, onLogout }) {
         )}
 
         {section === 'barcode' && (
-          <BarcodeFoodMenu barcodeFoods={state.barcodeFoods} variants={state.variants} dispatch={dispatchTracked} />
+          <>
+            {scanError && (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                {scanError}
+              </p>
+            )}
+            <BarcodeFoodMenu
+              barcodeFoods={state.barcodeFoods}
+              variants={state.variants}
+              dispatch={dispatchTracked}
+              onScan={() => { setScanError(''); setScanning(true); }}
+            />
+          </>
         )}
 
         {section === 'week' && (
@@ -374,6 +406,8 @@ export default function App({ username, onLogout }) {
           </>
         )}
       </AppShell>
+
+      <BarcodeScanner open={scanning} onClose={() => setScanning(false)} onDetect={handleScanFromMenu} />
 
       {undoToastAt !== 0 && (
         <div className="fixed inset-x-0 bottom-4 z-[60] flex justify-center px-4">
