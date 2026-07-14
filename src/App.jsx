@@ -392,6 +392,7 @@ export default function App({ username, onLogout }) {
         onClose={() => setSearchContext(null)}
         onSelect={handleSelectFood}
         customFoods={state.customFoods}
+        barcodeFoods={state.barcodeFoods}
         onSaveCustomFood={(food) => dispatchTracked({ type: 'UPSERT_CUSTOM_FOOD', payload: { food } })}
         onDeleteCustomFood={(foodId) => dispatchTracked({ type: 'DELETE_CUSTOM_FOOD', payload: { foodId } })}
         onBarcodeFoodFound={(food) => dispatchTracked({ type: 'UPSERT_BARCODE_FOOD', payload: { food } })}

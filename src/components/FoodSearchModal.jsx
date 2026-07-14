@@ -3,11 +3,12 @@ import { MACRO_KEYS, MACRO_LABELS, MACRO_UNITS } from '../constants';
 import { getOpenFoodFactsProductByBarcode, searchOpenFoodFacts } from '../services/openFoodFacts';
 import {
   createCustomFoodFromForm,
-  findCustomFoodByBarcode,
   makeEmptyCustomFoodForm,
-  searchCustomFoods,
+  matchesFoodQuery,
+  normalizeCustomFoodProduct,
   validateCustomFoodForm
 } from '../utils/customFoods';
+import { normalizeBarcodeFoods } from '../utils/barcodeFoods';
 import { roundMacro } from '../utils/macros';
 
 const SEARCH_PAGE_SIZE = 30;
@@ -22,6 +23,16 @@ const sourceLabels = {
 // quello, cerchiamo il prodotto esatto invece di fare una ricerca testuale.
 function looksLikeBarcode(value) {
   return /^\d{8,14}$/.test(String(value).trim().replace(/\s+/g, ''));
+}
+
+// I prodotti del catalogo barcode non portano il flag `selectable` (ce l'hanno solo
+// i custom): lo ricalcolo con la stessa regola di Open Food Facts, altrimenti la card
+// li mostrerebbe tutti come "Dati insufficienti".
+function withSelectable(food) {
+  const macros = food?.macrosPer100g ?? {};
+  const has = (key) => macros[key] !== null && macros[key] !== undefined && Number.isFinite(Number(macros[key]));
+  const others = MACRO_KEYS.filter((key) => key !== 'kcal' && has(key)).length;
+  return { ...food, selectable: has('kcal') && others >= 2 };
 }
 
 function sourceLabel(food) {
@@ -291,16 +302,16 @@ export default function FoodSearchModal({
   onClose,
   onSelect,
   customFoods = [],
+  barcodeFoods = [],
   onSaveCustomFood,
   onDeleteCustomFood,
   onBarcodeFoodFound
 }) {
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
-  const [results, setResults] = useState([]);
+  const [apiResults, setApiResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [empty, setEmpty] = useState(false);
   const [italyOnly, setItalyOnly] = useState(true);
   const [showLowRelevance, setShowLowRelevance] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -313,13 +324,29 @@ export default function FoodSearchModal({
   const title = useMemo(() => (mode === 'swap' ? 'Swap alimento' : 'Aggiungi alimento'), [mode]);
   const isBarcodeQuery = looksLikeBarcode(query);
 
+  // I miei alimenti = creati a mano + scansionati col telefono.
+  // Sono gia' in memoria, quindi li filtro dal vivo mentre scrivi: nessuna chiamata di rete.
+  const myFoods = useMemo(() => {
+    const custom = customFoods.map(normalizeCustomFoodProduct);
+    const scanned = normalizeBarcodeFoods(barcodeFoods).map(withSelectable);
+    return uniqueBySourceAndId([...custom, ...scanned]).filter((food) => matchesFoodQuery(food, query));
+  }, [customFoods, barcodeFoods, query]);
+
+  // Evito di ripetere sotto "Open Food Facts" un prodotto che ho gia' tra i miei.
+  const visibleApiResults = useMemo(() => {
+    const mine = new Set(myFoods.map((food) => food.barcode).filter(Boolean));
+    return apiResults.filter((food) => !food.barcode || !mine.has(food.barcode));
+  }, [apiResults, myFoods]);
+
+  // Reset solo all'apertura: se dipendesse anche da customFoods/barcodeFoods, uno scan
+  // dal telefono azzererebbe la ricerca in corso.
   useEffect(() => {
     if (!open) return;
 
     setQuery('');
     setCreating(false);
+    setApiResults([]);
     setError('');
-    setEmpty(false);
     setItalyOnly(true);
     setShowLowRelevance(false);
     setShowFilters(false);
@@ -328,15 +355,9 @@ export default function FoodSearchModal({
     setFailedPageRequest(null);
     setCustomFormError('');
     setCustomForm(makeEmptyCustomFoodForm());
-    setResults(uniqueBySourceAndId(searchCustomFoods(customFoods, '')));
-  }, [open, customFoods]);
+  }, [open]);
 
   if (!open) return null;
-
-  function localMatches(term, asBarcode) {
-    if (asBarcode) return [findCustomFoodByBarcode(customFoods, term)].filter(Boolean);
-    return searchCustomFoods(customFoods, term);
-  }
 
   async function runSearch(pageOverride = 1, overrides = {}) {
     const term = query.trim();
@@ -349,37 +370,24 @@ export default function FoodSearchModal({
 
     setLoading(true);
     setError('');
-    setEmpty(false);
     setFailedPageRequest(null);
     setLastSearch({ term, asBarcode });
-
-    if (requestedPage === 1) {
-      setSearchMeta(null);
-      setResults(uniqueBySourceAndId(localMatches(term, asBarcode)));
-    }
+    if (requestedPage === 1) setSearchMeta(null);
 
     try {
-      let nextResults = [];
-      let meta = null;
-      const localResults = requestedPage === 1 ? localMatches(term, asBarcode) : [];
-
       if (asBarcode) {
         const found = await getOpenFoodFactsProductByBarcode(term, { italyOnly: useItalyOnly });
         if (found) onBarcodeFoodFound?.(found);
-        nextResults = found ? [found] : [];
-        meta = {
+        setApiResults(found ? [found] : []);
+        setSearchMeta({
           totalFromApi: found ? 1 : 0,
           shownFromApi: found ? 1 : 0,
-          highRelevanceCount: found ? 1 : 0,
-          lowRelevanceCount: 0,
           hiddenLowRelevance: 0,
-          italyOnly: useItalyOnly,
           page: 1,
-          pageSize: 1,
           totalPages: 1,
           hasPreviousPage: false,
           hasNextPage: false
-        };
+        });
       } else {
         const apiResponse = await searchOpenFoodFacts(term, {
           italyOnly: useItalyOnly,
@@ -387,27 +395,17 @@ export default function FoodSearchModal({
           page: requestedPage,
           pageSize: SEARCH_PAGE_SIZE
         });
-        nextResults = apiResponse.results;
-        meta = apiResponse.meta;
+        setApiResults(apiResponse.results);
+        setSearchMeta(apiResponse.meta);
       }
-
-      const merged = uniqueBySourceAndId([...localResults, ...nextResults]);
-      setResults(merged);
-      setSearchMeta(meta);
-      setEmpty(merged.length === 0);
     } catch (requestError) {
       console.warn(requestError);
       setFailedPageRequest({ term, page: requestedPage });
       setError(
         asBarcode
-          ? 'Ricerca non riuscita. Riprova, oppure crea tu l\u2019alimento.'
+          ? 'Ricerca non riuscita. Riprova, oppure crea tu l’alimento.'
           : `Pagina ${requestedPage} non caricata. Riprova.`
       );
-
-      const fallbackResults = uniqueBySourceAndId(localMatches(term, asBarcode));
-      const hadVisibleResults = results.length > 0;
-      setResults((currentResults) => (currentResults.length > 0 ? currentResults : fallbackResults));
-      setEmpty(!hadVisibleResults && fallbackResults.length === 0);
     } finally {
       setLoading(false);
     }
@@ -424,11 +422,11 @@ export default function FoodSearchModal({
   }
 
   function startCreating() {
-    // Se ho appena cercato per nome, precompilo il campo: risparmia una digitazione.
-    if (lastSearch && !lastSearch.asBarcode) {
-      setCustomForm((current) => ({ ...current, name: current.name || lastSearch.term }));
-    } else if (lastSearch?.asBarcode) {
-      setCustomForm((current) => ({ ...current, barcode: current.barcode || lastSearch.term }));
+    // Precompilo con quello che stavo cercando: una digitazione in meno.
+    const term = lastSearch?.term ?? query.trim();
+    if (term) {
+      const field = looksLikeBarcode(term) ? 'barcode' : 'name';
+      setCustomForm((current) => ({ ...current, [field]: current[field] || term }));
     }
     setCustomFormError('');
     setCreating(true);
@@ -449,7 +447,9 @@ export default function FoodSearchModal({
     onSelect(customFood);
   }
 
-  const showingLibrary = !searchMeta && !lastSearch && results.length > 0;
+  const searched = Boolean(lastSearch) && !loading;
+  const noApiResults = searched && visibleApiResults.length === 0;
+  const nothingAtAll = noApiResults && myFoods.length === 0 && !error;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur sm:items-center sm:p-4">
@@ -493,7 +493,6 @@ export default function FoodSearchModal({
             </p>
           )}
 
-          {/* Una riga sola: filtri, stato, e la via d'uscita per creare */}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <button
               type="button"
@@ -505,22 +504,14 @@ export default function FoodSearchModal({
 
             {error ? (
               <span className="font-semibold text-amber-700">{error}</span>
-            ) : searchMeta && searchMeta.shownFromApi > 0 ? (
-              <span className="text-slate-500">
-                {searchMeta.shownFromApi} risultati
-                {searchMeta.hiddenLowRelevance > 0 && (
-                  <>
-                    {' · '}
-                    <button
-                      type="button"
-                      onClick={revealLowRelevance}
-                      className="font-semibold text-indigo-600 underline-offset-2 hover:underline"
-                    >
-                      mostra altri {searchMeta.hiddenLowRelevance} meno pertinenti
-                    </button>
-                  </>
-                )}
-              </span>
+            ) : searchMeta && searchMeta.hiddenLowRelevance > 0 ? (
+              <button
+                type="button"
+                onClick={revealLowRelevance}
+                className="font-semibold text-indigo-600 underline-offset-2 hover:underline"
+              >
+                mostra altri {searchMeta.hiddenLowRelevance} meno pertinenti
+              </button>
             ) : null}
 
             {!creating && (
@@ -583,7 +574,7 @@ export default function FoodSearchModal({
                 onSubmit={handleCustomSubmit}
               />
             </div>
-          ) : empty ? (
+          ) : nothingAtAll ? (
             <div className="rounded-3xl border-2 border-dashed border-slate-200 px-6 py-12 text-center">
               <p className="font-bold text-slate-700">
                 {lastSearch?.asBarcode
@@ -599,29 +590,70 @@ export default function FoodSearchModal({
               </button>
             </div>
           ) : (
-            <>
-              {showingLibrary && (
-                <p className="mb-3 text-sm font-semibold text-slate-500">I tuoi alimenti salvati</p>
+            <div className="space-y-6">
+              {myFoods.length > 0 && (
+                <section>
+                  <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-400">
+                    I tuoi alimenti · {myFoods.length}
+                  </h3>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {myFoods.map((food) => (
+                      <FoodResultCard
+                        key={`${food.source}-${food.id}-${food.barcode}`}
+                        food={food}
+                        mode={mode}
+                        onSelect={onSelect}
+                        onDeleteCustomFood={food.source === 'manual' ? onDeleteCustomFood : undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
               )}
-              <div className="grid gap-3 md:grid-cols-2">
-                {results.map((food) => (
-                  <FoodResultCard
-                    key={`${food.source}-${food.id}-${food.barcode}`}
-                    food={food}
-                    mode={mode}
-                    onSelect={onSelect}
-                    onDeleteCustomFood={food.source === 'manual' ? onDeleteCustomFood : undefined}
+
+              {searched && visibleApiResults.length > 0 && (
+                <section>
+                  <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-400">
+                    Da Open Food Facts · {visibleApiResults.length}
+                  </h3>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {visibleApiResults.map((food) => (
+                      <FoodResultCard
+                        key={`${food.source}-${food.id}-${food.barcode}`}
+                        food={food}
+                        mode={mode}
+                        onSelect={onSelect}
+                      />
+                    ))}
+                  </div>
+                  <PaginationControls
+                    meta={searchMeta}
+                    loading={loading}
+                    failedPageRequest={failedPageRequest}
+                    onPageChange={(page) => runSearch(page)}
+                    onRetryFailedPage={() => failedPageRequest && runSearch(failedPageRequest.page)}
                   />
-                ))}
-              </div>
-              <PaginationControls
-                meta={searchMeta}
-                loading={loading}
-                failedPageRequest={failedPageRequest}
-                onPageChange={(page) => runSearch(page)}
-                onRetryFailedPage={() => failedPageRequest && runSearch(failedPageRequest.page)}
-              />
-            </>
+                </section>
+              )}
+
+              {noApiResults && myFoods.length > 0 && !error && (
+                <p className="text-sm text-slate-500">
+                  Nessun altro risultato da Open Food Facts.{' '}
+                  <button
+                    type="button"
+                    onClick={startCreating}
+                    className="font-semibold text-fuchsia-700 underline-offset-2 hover:underline"
+                  >
+                    Crea a mano
+                  </button>
+                </p>
+              )}
+
+              {!searched && myFoods.length === 0 && (
+                <p className="py-10 text-center text-sm text-slate-400">
+                  Cerca un prodotto per nome o codice a barre.
+                </p>
+              )}
+            </div>
           )}
         </main>
       </div>
