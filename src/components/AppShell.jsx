@@ -4,6 +4,7 @@ const NAV = [
   { id: 'diet', label: 'Dieta' },
   { id: 'barcode', label: 'Barcode' },
   { id: 'week', label: 'Settimana' },
+  { id: 'calculator', label: 'Calcolatore' },
   { id: 'settings', label: 'Impostazioni' },
 ];
 

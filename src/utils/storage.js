@@ -34,7 +34,8 @@ function normalizePersistedState(raw) {
     barcodeFoods: Array.isArray(candidate.barcodeFoods)
       ? candidate.barcodeFoods.map(normalizeBarcodeFood)
       : [],
-    weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {}
+    weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {},
+    calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null
   };
 }
 
@@ -50,7 +51,8 @@ export function buildPersistedDocument(state) {
       activeVariantId: state.activeVariantId,
       customFoods: state.customFoods ?? [],
       barcodeFoods: state.barcodeFoods ?? [],
-      weekAssignments: state.weekAssignments ?? {}
+      weekAssignments: state.weekAssignments ?? {},
+      calculatorProfile: state.calculatorProfile ?? null
     })
   };
 }

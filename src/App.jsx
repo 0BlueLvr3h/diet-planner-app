@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import AppShell from './components/AppShell';
 import BarcodeScanner from './components/BarcodeScanner';
+import CalorieCalculator from './components/CalorieCalculator';
 import BarcodeFoodMenu from './components/BarcodeFoodMenu';
 import DiffPanel from './components/DiffPanel';
 import FoodSearchModal from './components/FoodSearchModal';
@@ -379,6 +380,14 @@ export default function App({ username, onLogout }) {
               onScan={() => { setScanError(''); setScanning(true); }}
             />
           </>
+        )}
+
+        {section === 'calculator' && (
+          <CalorieCalculator
+            profile={state.calculatorProfile}
+            onSaveProfile={(profile) => dispatch({ type: 'SET_CALCULATOR_PROFILE', payload: { profile } })}
+            onApplyTargets={(target) => dispatchTracked({ type: 'SET_TARGETS', payload: { target } })}
+          />
         )}
 
         {section === 'week' && (
