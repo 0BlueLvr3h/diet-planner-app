@@ -14,9 +14,15 @@ const SEARCH_PAGE_SIZE = 30;
 
 const sourceLabels = {
   'open-food-facts': 'Open Food Facts',
-  manual: 'Custom manuale',
+  manual: 'Creato da te',
   mock: 'Dato locale legacy'
 };
+
+// Un codice a barre e' solo cifre (EAN-8, UPC, EAN-13...). Se l'utente scrive
+// quello, cerchiamo il prodotto esatto invece di fare una ricerca testuale.
+function looksLikeBarcode(value) {
+  return /^\d{8,14}$/.test(String(value).trim().replace(/\s+/g, ''));
+}
 
 function sourceLabel(food) {
   return sourceLabels[food.source] || food.source || 'Sorgente n/d';
@@ -144,6 +150,7 @@ function CustomFoodForm({ form, setForm, error, onSubmit }) {
         <h3 className="text-lg font-black text-slate-950">Crea un alimento tuo</h3>
         <p className="mt-1 text-sm text-slate-600">
           Per quando il prodotto non si trova: il macellaio, una ricetta di casa, un alimento senza barcode.
+          Resta nella tua libreria e potrai riusarlo.
         </p>
       </div>
 
@@ -223,10 +230,7 @@ function CustomFoodForm({ form, setForm, error, onSubmit }) {
         ))}
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-slate-600">
-          Viene aggiunto alla dieta e salvato nella tua libreria.
-        </p>
+      <div className="mt-4 flex justify-end">
         <button type="submit" className="btn-primary">
           Salva e usa
         </button>
@@ -291,9 +295,8 @@ export default function FoodSearchModal({
   onDeleteCustomFood,
   onBarcodeFoodFound
 }) {
-  const [searchMode, setSearchMode] = useState('text');
   const [query, setQuery] = useState('');
-  const [barcode, setBarcode] = useState('');
+  const [creating, setCreating] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -302,24 +305,26 @@ export default function FoodSearchModal({
   const [showLowRelevance, setShowLowRelevance] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [searchMeta, setSearchMeta] = useState(null);
+  const [lastSearch, setLastSearch] = useState(null);
   const [failedPageRequest, setFailedPageRequest] = useState(null);
   const [customForm, setCustomForm] = useState(() => makeEmptyCustomFoodForm());
   const [customFormError, setCustomFormError] = useState('');
 
   const title = useMemo(() => (mode === 'swap' ? 'Swap alimento' : 'Aggiungi alimento'), [mode]);
+  const isBarcodeQuery = looksLikeBarcode(query);
 
   useEffect(() => {
     if (!open) return;
 
-    setSearchMode('text');
     setQuery('');
-    setBarcode('');
+    setCreating(false);
     setError('');
     setEmpty(false);
     setItalyOnly(true);
     setShowLowRelevance(false);
     setShowFilters(false);
     setSearchMeta(null);
+    setLastSearch(null);
     setFailedPageRequest(null);
     setCustomFormError('');
     setCustomForm(makeEmptyCustomFoodForm());
@@ -328,39 +333,38 @@ export default function FoodSearchModal({
 
   if (!open) return null;
 
-  function customMatchesForCurrentMode() {
-    if (searchMode === 'barcode') {
-      return [findCustomFoodByBarcode(customFoods, barcode)].filter(Boolean);
-    }
-
-    return searchCustomFoods(customFoods, query);
+  function localMatches(term, asBarcode) {
+    if (asBarcode) return [findCustomFoodByBarcode(customFoods, term)].filter(Boolean);
+    return searchCustomFoods(customFoods, term);
   }
 
   async function runSearch(pageOverride = 1, overrides = {}) {
-    if (searchMode === 'custom') return;
+    const term = query.trim();
+    if (!term) return;
 
+    const asBarcode = looksLikeBarcode(term);
     const useItalyOnly = overrides.italyOnly ?? italyOnly;
     const useLowRelevance = overrides.showLowRelevance ?? showLowRelevance;
-    const requestedPage = Math.max(1, Number(pageOverride) || 1);
-    const requestSnapshot = { searchMode, query, barcode, page: requestedPage };
+    const requestedPage = asBarcode ? 1 : Math.max(1, Number(pageOverride) || 1);
 
     setLoading(true);
     setError('');
     setEmpty(false);
     setFailedPageRequest(null);
+    setLastSearch({ term, asBarcode });
 
     if (requestedPage === 1) {
       setSearchMeta(null);
-      setResults(uniqueBySourceAndId(customMatchesForCurrentMode()));
+      setResults(uniqueBySourceAndId(localMatches(term, asBarcode)));
     }
 
     try {
       let nextResults = [];
       let meta = null;
-      const localCustomResults = requestedPage === 1 ? customMatchesForCurrentMode() : [];
+      const localResults = requestedPage === 1 ? localMatches(term, asBarcode) : [];
 
-      if (searchMode === 'barcode') {
-        const found = await getOpenFoodFactsProductByBarcode(barcode, { italyOnly: useItalyOnly });
+      if (asBarcode) {
+        const found = await getOpenFoodFactsProductByBarcode(term, { italyOnly: useItalyOnly });
         if (found) onBarcodeFoodFound?.(found);
         nextResults = found ? [found] : [];
         meta = {
@@ -377,7 +381,7 @@ export default function FoodSearchModal({
           hasNextPage: false
         };
       } else {
-        const apiResponse = await searchOpenFoodFacts(query, {
+        const apiResponse = await searchOpenFoodFacts(term, {
           italyOnly: useItalyOnly,
           includeLowRelevance: useLowRelevance,
           page: requestedPage,
@@ -387,20 +391,20 @@ export default function FoodSearchModal({
         meta = apiResponse.meta;
       }
 
-      const merged = uniqueBySourceAndId([...localCustomResults, ...nextResults]);
+      const merged = uniqueBySourceAndId([...localResults, ...nextResults]);
       setResults(merged);
       setSearchMeta(meta);
       setEmpty(merged.length === 0);
     } catch (requestError) {
       console.warn(requestError);
-      setFailedPageRequest(requestSnapshot);
+      setFailedPageRequest({ term, page: requestedPage });
       setError(
-        searchMode === 'text'
-          ? `Pagina ${requestedPage} non caricata. Riprova.`
-          : 'Ricerca non riuscita. Riprova, oppure crea un alimento tuo.'
+        asBarcode
+          ? 'Ricerca non riuscita. Riprova, oppure crea tu l\u2019alimento.'
+          : `Pagina ${requestedPage} non caricata. Riprova.`
       );
 
-      const fallbackResults = uniqueBySourceAndId(customMatchesForCurrentMode());
+      const fallbackResults = uniqueBySourceAndId(localMatches(term, asBarcode));
       const hadVisibleResults = results.length > 0;
       setResults((currentResults) => (currentResults.length > 0 ? currentResults : fallbackResults));
       setEmpty(!hadVisibleResults && fallbackResults.length === 0);
@@ -414,18 +418,20 @@ export default function FoodSearchModal({
     runSearch(1);
   }
 
-  function handlePageChange(nextPage) {
-    runSearch(nextPage);
-  }
-
-  function handleRetryFailedPage() {
-    if (!failedPageRequest) return;
-    runSearch(failedPageRequest.page);
-  }
-
   function revealLowRelevance() {
     setShowLowRelevance(true);
     runSearch(searchMeta?.page ?? 1, { showLowRelevance: true });
+  }
+
+  function startCreating() {
+    // Se ho appena cercato per nome, precompilo il campo: risparmia una digitazione.
+    if (lastSearch && !lastSearch.asBarcode) {
+      setCustomForm((current) => ({ ...current, name: current.name || lastSearch.term }));
+    } else if (lastSearch?.asBarcode) {
+      setCustomForm((current) => ({ ...current, barcode: current.barcode || lastSearch.term }));
+    }
+    setCustomFormError('');
+    setCreating(true);
   }
 
   function handleCustomSubmit(event) {
@@ -443,14 +449,7 @@ export default function FoodSearchModal({
     onSelect(customFood);
   }
 
-  function resetSearchState(nextMode) {
-    setSearchMode(nextMode);
-    setError('');
-    setEmpty(false);
-    setSearchMeta(null);
-    setFailedPageRequest(null);
-    setResults(uniqueBySourceAndId(searchCustomFoods(customFoods, '')));
-  }
+  const showingLibrary = !searchMeta && !lastSearch && results.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur sm:items-center sm:p-4">
@@ -468,92 +467,74 @@ export default function FoodSearchModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-4 grid gap-3 lg:grid-cols-[190px_1fr_auto]">
-            <select
-              value={searchMode}
-              onChange={(event) => resetSearchState(event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 font-semibold text-slate-900 outline-none ring-indigo-200 focus:ring-4"
+          <form onSubmit={handleSubmit} className="mt-4 flex gap-3">
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setFailedPageRequest(null);
+                setError('');
+              }}
+              placeholder="Nome prodotto o codice a barre..."
+              className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
+            />
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="btn-primary shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="text">Cerca per nome</option>
-              <option value="barcode">Codice a barre</option>
-              <option value="custom">Crea a mano</option>
-            </select>
-
-            {searchMode === 'text' && (
-              <input
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setFailedPageRequest(null);
-                  setError('');
-                }}
-                placeholder="Esempio: salmone, yogurt greco, farina d'avena..."
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
-              />
-            )}
-
-            {searchMode === 'barcode' && (
-              <input
-                value={barcode}
-                onChange={(event) => {
-                  setBarcode(event.target.value);
-                  setFailedPageRequest(null);
-                  setError('');
-                }}
-                placeholder="Codice a barre EAN"
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
-              />
-            )}
-
-            {searchMode === 'custom' && (
-              <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3 text-sm font-bold text-fuchsia-700 lg:col-span-2">
-                Compila il form qui sotto: l'alimento resta nella tua libreria e potrai riusarlo.
-              </div>
-            )}
-
-            {searchMode !== 'custom' && (
-              <button type="submit" disabled={loading} className="btn-primary disabled:cursor-wait disabled:opacity-60">
-                {loading ? 'Cerco…' : 'Cerca'}
-              </button>
-            )}
+              {loading ? 'Cerco…' : 'Cerca'}
+            </button>
           </form>
 
-          {/* Riga di stato: una sola, e solo quando serve dire qualcosa */}
-          {searchMode !== 'custom' && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <button
-                type="button"
-                onClick={() => setShowFilters((value) => !value)}
-                className="font-semibold text-slate-500 transition hover:text-slate-800"
-              >
-                {showFilters ? 'Nascondi filtri' : 'Filtri'}
-              </button>
-
-              {error ? (
-                <span className="font-semibold text-amber-700">{error}</span>
-              ) : empty ? (
-                <span className="text-slate-500">Nessun risultato. Cambia i termini o crea l'alimento a mano.</span>
-              ) : searchMeta && searchMeta.shownFromApi > 0 ? (
-                <span className="text-slate-500">
-                  {searchMeta.shownFromApi} risultati
-                  {searchMeta.hiddenLowRelevance > 0 && (
-                    <>
-                      {' · '}
-                      <button
-                        type="button"
-                        onClick={revealLowRelevance}
-                        className="font-semibold text-indigo-600 underline-offset-2 hover:underline"
-                      >
-                        mostra altri {searchMeta.hiddenLowRelevance} meno pertinenti
-                      </button>
-                    </>
-                  )}
-                </span>
-              ) : null}
-            </div>
+          {isBarcodeQuery && (
+            <p className="mt-2 text-xs font-semibold text-indigo-600">
+              Sembra un codice a barre: cerco il prodotto esatto.
+            </p>
           )}
 
-          {showFilters && searchMode !== 'custom' && (
+          {/* Una riga sola: filtri, stato, e la via d'uscita per creare */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <button
+              type="button"
+              onClick={() => setShowFilters((value) => !value)}
+              className="font-semibold text-slate-500 transition hover:text-slate-800"
+            >
+              {showFilters ? 'Nascondi filtri' : 'Filtri'}
+            </button>
+
+            {error ? (
+              <span className="font-semibold text-amber-700">{error}</span>
+            ) : searchMeta && searchMeta.shownFromApi > 0 ? (
+              <span className="text-slate-500">
+                {searchMeta.shownFromApi} risultati
+                {searchMeta.hiddenLowRelevance > 0 && (
+                  <>
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={revealLowRelevance}
+                      className="font-semibold text-indigo-600 underline-offset-2 hover:underline"
+                    >
+                      mostra altri {searchMeta.hiddenLowRelevance} meno pertinenti
+                    </button>
+                  </>
+                )}
+              </span>
+            ) : null}
+
+            {!creating && (
+              <button
+                type="button"
+                onClick={startCreating}
+                className="ml-auto font-semibold text-fuchsia-700 transition hover:text-fuchsia-900"
+              >
+                Crea a mano
+              </button>
+            )}
+          </div>
+
+          {showFilters && (
             <div className="mt-2 flex flex-wrap items-center gap-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm">
               <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-slate-700">
                 <input
@@ -568,59 +549,60 @@ export default function FoodSearchModal({
                 />
                 Priorità Italia
               </label>
-              {searchMode === 'text' && (
-                <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={showLowRelevance}
-                    onChange={(event) => {
-                      setShowLowRelevance(event.target.checked);
-                      setSearchMeta(null);
-                      setFailedPageRequest(null);
-                    }}
-                    className="h-4 w-4 accent-amber-600"
-                  />
-                  Mostra anche i risultati meno pertinenti
-                </label>
-              )}
+              <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={showLowRelevance}
+                  onChange={(event) => {
+                    setShowLowRelevance(event.target.checked);
+                    setSearchMeta(null);
+                    setFailedPageRequest(null);
+                  }}
+                  className="h-4 w-4 accent-amber-600"
+                />
+                Mostra anche i risultati meno pertinenti
+              </label>
             </div>
           )}
         </header>
 
         <main className="overflow-y-auto p-4 lg:p-5">
-          {searchMode === 'custom' ? (
+          {creating ? (
             <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setCreating(false)}
+                className="text-sm font-semibold text-slate-500 transition hover:text-slate-800"
+              >
+                ← Torna ai risultati
+              </button>
               <CustomFoodForm
                 form={customForm}
                 setForm={setCustomForm}
                 error={customFormError}
                 onSubmit={handleCustomSubmit}
               />
-
-              {customFoods.length > 0 && (
-                <section>
-                  <div className="mb-3">
-                    <h3 className="text-lg font-black text-slate-950">La tua libreria</h3>
-                    <p className="text-sm text-slate-500">
-                      {customFoods.length} alimenti creati da te. Riusali o eliminali.
-                    </p>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {searchCustomFoods(customFoods, '').map((food) => (
-                      <FoodResultCard
-                        key={`${food.source}-${food.id}-${food.barcode}`}
-                        food={food}
-                        mode={mode}
-                        onSelect={onSelect}
-                        onDeleteCustomFood={onDeleteCustomFood}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
+            </div>
+          ) : empty ? (
+            <div className="rounded-3xl border-2 border-dashed border-slate-200 px-6 py-12 text-center">
+              <p className="font-bold text-slate-700">
+                {lastSearch?.asBarcode
+                  ? `Nessun prodotto con il codice ${lastSearch.term}`
+                  : `Nessun risultato per "${lastSearch?.term ?? query}"`}
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+                Potrebbe non essere su Open Food Facts. Puoi inserirlo tu leggendo i valori dall'etichetta:
+                resta salvato nella tua libreria.
+              </p>
+              <button type="button" onClick={startCreating} className="btn-primary mt-5">
+                Crealo tu →
+              </button>
             </div>
           ) : (
             <>
+              {showingLibrary && (
+                <p className="mb-3 text-sm font-semibold text-slate-500">I tuoi alimenti salvati</p>
+              )}
               <div className="grid gap-3 md:grid-cols-2">
                 {results.map((food) => (
                   <FoodResultCard
@@ -636,8 +618,8 @@ export default function FoodSearchModal({
                 meta={searchMeta}
                 loading={loading}
                 failedPageRequest={failedPageRequest}
-                onPageChange={handlePageChange}
-                onRetryFailedPage={handleRetryFailedPage}
+                onPageChange={(page) => runSearch(page)}
+                onRetryFailedPage={() => failedPageRequest && runSearch(failedPageRequest.page)}
               />
             </>
           )}
