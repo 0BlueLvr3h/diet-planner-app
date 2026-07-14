@@ -91,20 +91,14 @@ function FoodResultCard({ food, mode, onSelect, onDeleteCustomFood }) {
               {sourceLabel(food)}
             </span>
             {food.isLowRelevance && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">Bassa pertinenza</span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">Poco pertinente</span>
             )}
-            {food.source === 'open-food-facts' && (
-              <span
-                className={`rounded-full px-2 py-0.5 ${
-                  food.isItalianMarket ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                }`}
-              >
-                {food.isItalianMarket ? 'Mercato Italia' : 'Paese n/d'}
-              </span>
+            {food.source === 'open-food-facts' && food.isItalianMarket && (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">Italia</span>
             )}
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
-              {food.quantity || 'quantità n/d'}
-            </span>
+            {food.quantity && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">{food.quantity}</span>
+            )}
           </div>
         </div>
       </div>
@@ -113,7 +107,7 @@ function FoodResultCard({ food, mode, onSelect, onDeleteCustomFood }) {
 
       {food.hasIncompleteMacros && (
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Mancano: {food.missingMacros.join(', ')}. Selezione consentita solo con kcal e almeno 2 macro principali.
+          Mancano: {food.missingMacros.join(', ')}.
         </div>
       )}
 
@@ -147,9 +141,9 @@ function CustomFoodForm({ form, setForm, error, onSubmit }) {
   return (
     <form onSubmit={onSubmit} className="rounded-3xl border border-fuchsia-100 bg-fuchsia-50/60 p-4">
       <div>
-        <h3 className="text-lg font-black text-slate-950">Inserisci alimento custom</h3>
+        <h3 className="text-lg font-black text-slate-950">Crea un alimento tuo</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Usalo quando Open Food Facts non trova il prodotto o quando vuoi salvare un alimento del macellaio, una ricetta base o un prodotto senza barcode.
+          Per quando il prodotto non si trova: il macellaio, una ricetta di casa, un alimento senza barcode.
         </p>
       </div>
 
@@ -231,10 +225,10 @@ function CustomFoodForm({ form, setForm, error, onSubmit }) {
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-slate-600">
-          Al salvataggio viene aggiunto alla dieta e salvato nella libreria custom locale.
+          Viene aggiunto alla dieta e salvato nella tua libreria.
         </p>
         <button type="submit" className="btn-primary">
-          Salva e usa alimento custom
+          Salva e usa
         </button>
       </div>
     </form>
@@ -247,35 +241,19 @@ function PaginationControls({ meta, loading, failedPageRequest, onPageChange, on
   const failedPage = failedPageRequest?.page;
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <div className="text-sm font-black text-slate-900">
-          {meta ? formatPageLabel(meta) : failedPage ? `Pagina ${failedPage}` : ''}
-        </div>
-        <div className="text-xs font-semibold text-slate-500">
-          {meta && (
-            <>
-              {meta.shownFromApi} risultati mostrati in questa pagina
-              {Number.isFinite(meta.nextPageVisibleCount) ? ` · ${meta.nextPageVisibleCount} nella pagina successiva` : ''}
-              {Number.isFinite(meta.totalAvailableFromApi) ? ` · ${meta.totalAvailableFromApi} risultati API totali stimati` : ''}
-            </>
-          )}
-          {failedPage && (
-            <span className="mt-1 block text-amber-700">
-              La pagina {failedPage} non è stata caricata. Puoi riprovare questa pagina senza rilanciare la ricerca dalla prima.
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      <span className="text-sm text-slate-400">
+        {meta ? formatPageLabel(meta) : failedPage ? `Pagina ${failedPage}` : ''}
+      </span>
       <div className="flex flex-wrap gap-2">
         {failedPage && (
           <button
             type="button"
             disabled={loading}
             onClick={onRetryFailedPage}
-            className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-black text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:opacity-50"
+            className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:opacity-50"
           >
-            Riprova pagina {failedPage}
+            Riprova
           </button>
         )}
         {meta && (
@@ -284,17 +262,17 @@ function PaginationControls({ meta, loading, failedPageRequest, onPageChange, on
               type="button"
               disabled={loading || !meta.hasPreviousPage}
               onClick={() => onPageChange(Math.max(1, (failedPage ?? meta.page) - 1))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Pagina precedente
+              Precedente
             </button>
             <button
               type="button"
               disabled={loading || !meta.hasNextPage}
               onClick={() => onPageChange((failedPage ?? meta.page) + 1)}
-              className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Pagina successiva
+              Successiva
             </button>
           </>
         )}
@@ -322,6 +300,7 @@ export default function FoodSearchModal({
   const [empty, setEmpty] = useState(false);
   const [italyOnly, setItalyOnly] = useState(true);
   const [showLowRelevance, setShowLowRelevance] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [searchMeta, setSearchMeta] = useState(null);
   const [failedPageRequest, setFailedPageRequest] = useState(null);
   const [customForm, setCustomForm] = useState(() => makeEmptyCustomFoodForm());
@@ -339,6 +318,7 @@ export default function FoodSearchModal({
     setEmpty(false);
     setItalyOnly(true);
     setShowLowRelevance(false);
+    setShowFilters(false);
     setSearchMeta(null);
     setFailedPageRequest(null);
     setCustomFormError('');
@@ -356,18 +336,13 @@ export default function FoodSearchModal({
     return searchCustomFoods(customFoods, query);
   }
 
-  async function runSearch(pageOverride = 1) {
+  async function runSearch(pageOverride = 1, overrides = {}) {
     if (searchMode === 'custom') return;
 
+    const useItalyOnly = overrides.italyOnly ?? italyOnly;
+    const useLowRelevance = overrides.showLowRelevance ?? showLowRelevance;
     const requestedPage = Math.max(1, Number(pageOverride) || 1);
-    const requestSnapshot = {
-      searchMode,
-      query,
-      barcode,
-      italyOnly,
-      showLowRelevance,
-      page: requestedPage
-    };
+    const requestSnapshot = { searchMode, query, barcode, page: requestedPage };
 
     setLoading(true);
     setError('');
@@ -385,17 +360,16 @@ export default function FoodSearchModal({
       const localCustomResults = requestedPage === 1 ? customMatchesForCurrentMode() : [];
 
       if (searchMode === 'barcode') {
-        const found = await getOpenFoodFactsProductByBarcode(barcode, { italyOnly });
+        const found = await getOpenFoodFactsProductByBarcode(barcode, { italyOnly: useItalyOnly });
         if (found) onBarcodeFoodFound?.(found);
         nextResults = found ? [found] : [];
         meta = {
           totalFromApi: found ? 1 : 0,
-          totalAvailableFromApi: found ? 1 : 0,
           shownFromApi: found ? 1 : 0,
           highRelevanceCount: found ? 1 : 0,
           lowRelevanceCount: 0,
           hiddenLowRelevance: 0,
-          italyOnly,
+          italyOnly: useItalyOnly,
           page: 1,
           pageSize: 1,
           totalPages: 1,
@@ -404,8 +378,8 @@ export default function FoodSearchModal({
         };
       } else {
         const apiResponse = await searchOpenFoodFacts(query, {
-          italyOnly,
-          includeLowRelevance: showLowRelevance,
+          italyOnly: useItalyOnly,
+          includeLowRelevance: useLowRelevance,
           page: requestedPage,
           pageSize: SEARCH_PAGE_SIZE
         });
@@ -422,21 +396,9 @@ export default function FoodSearchModal({
       setFailedPageRequest(requestSnapshot);
       setError(
         searchMode === 'text'
-          ? `Pagina ${requestedPage} non caricata da Open Food Facts. Ora puoi riprovare la stessa pagina senza tornare alla pagina 1.`
-          : 'La chiamata a Open Food Facts non è riuscita. Puoi riprovare oppure inserire un alimento custom manuale.'
+          ? `Pagina ${requestedPage} non caricata. Riprova.`
+          : 'Ricerca non riuscita. Riprova, oppure crea un alimento tuo.'
       );
-
-      setSearchMeta((currentMeta) => {
-        if (!currentMeta || searchMode !== 'text') return currentMeta;
-
-        return {
-          ...currentMeta,
-          failedPage: requestedPage,
-          hasPreviousPage: requestedPage > 1 || currentMeta.hasPreviousPage,
-          hasNextPage:
-            currentMeta.totalPages === null ? true : requestedPage < currentMeta.totalPages
-        };
-      });
 
       const fallbackResults = uniqueBySourceAndId(customMatchesForCurrentMode());
       const hadVisibleResults = results.length > 0;
@@ -461,6 +423,11 @@ export default function FoodSearchModal({
     runSearch(failedPageRequest.page);
   }
 
+  function revealLowRelevance() {
+    setShowLowRelevance(true);
+    runSearch(searchMeta?.page ?? 1, { showLowRelevance: true });
+  }
+
   function handleCustomSubmit(event) {
     event.preventDefault();
     const errors = validateCustomFoodForm(customForm);
@@ -476,6 +443,15 @@ export default function FoodSearchModal({
     onSelect(customFood);
   }
 
+  function resetSearchState(nextMode) {
+    setSearchMode(nextMode);
+    setError('');
+    setEmpty(false);
+    setSearchMeta(null);
+    setFailedPageRequest(null);
+    setResults(uniqueBySourceAndId(searchCustomFoods(customFoods, '')));
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur sm:items-center sm:p-4">
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-soft sm:rounded-3xl">
@@ -484,7 +460,7 @@ export default function FoodSearchModal({
             <div>
               <h2 className="text-2xl font-black text-slate-950">{title}</h2>
               <p className="text-sm text-slate-500">
-                Cerca su Open Food Facts per testo o barcode. I risultati API sono paginati: puoi andare avanti finché trovi il prodotto giusto.
+                Cerca un prodotto per nome o codice a barre. Se non lo trovi, puoi crearlo tu.
               </p>
             </div>
             <button onClick={onClose} className="rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700 hover:bg-slate-200">
@@ -492,22 +468,15 @@ export default function FoodSearchModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-4 grid gap-3 lg:grid-cols-[210px_1fr_auto]">
+          <form onSubmit={handleSubmit} className="mt-4 grid gap-3 lg:grid-cols-[190px_1fr_auto]">
             <select
               value={searchMode}
-              onChange={(event) => {
-                setSearchMode(event.target.value);
-                setError('');
-                setEmpty(false);
-                setSearchMeta(null);
-                setFailedPageRequest(null);
-                setResults(uniqueBySourceAndId(searchCustomFoods(customFoods, '')));
-              }}
+              onChange={(event) => resetSearchState(event.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 font-semibold text-slate-900 outline-none ring-indigo-200 focus:ring-4"
             >
-              <option value="text">Ricerca testo</option>
+              <option value="text">Cerca per nome</option>
               <option value="barcode">Codice a barre</option>
-              <option value="custom">Custom manuale</option>
+              <option value="custom">Crea a mano</option>
             </select>
 
             {searchMode === 'text' && (
@@ -518,7 +487,7 @@ export default function FoodSearchModal({
                   setFailedPageRequest(null);
                   setError('');
                 }}
-                placeholder="Esempio: salmone, tonno, yogurt greco, farina avena..."
+                placeholder="Esempio: salmone, yogurt greco, farina d'avena..."
                 className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none ring-indigo-200 focus:ring-4"
               />
             )}
@@ -538,20 +507,55 @@ export default function FoodSearchModal({
 
             {searchMode === 'custom' && (
               <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-3 text-sm font-bold text-fuchsia-700 lg:col-span-2">
-                Compila il form sotto: l'alimento viene salvato nella libreria custom e puoi riusarlo in futuro.
+                Compila il form qui sotto: l'alimento resta nella tua libreria e potrai riusarlo.
               </div>
             )}
 
             {searchMode !== 'custom' && (
               <button type="submit" disabled={loading} className="btn-primary disabled:cursor-wait disabled:opacity-60">
-                {loading ? 'Carico...' : 'Cerca API'}
+                {loading ? 'Cerco…' : 'Cerca'}
               </button>
             )}
           </form>
 
+          {/* Riga di stato: una sola, e solo quando serve dire qualcosa */}
           {searchMode !== 'custom' && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setShowFilters((value) => !value)}
+                className="font-semibold text-slate-500 transition hover:text-slate-800"
+              >
+                {showFilters ? 'Nascondi filtri' : 'Filtri'}
+              </button>
+
+              {error ? (
+                <span className="font-semibold text-amber-700">{error}</span>
+              ) : empty ? (
+                <span className="text-slate-500">Nessun risultato. Cambia i termini o crea l'alimento a mano.</span>
+              ) : searchMeta && searchMeta.shownFromApi > 0 ? (
+                <span className="text-slate-500">
+                  {searchMeta.shownFromApi} risultati
+                  {searchMeta.hiddenLowRelevance > 0 && (
+                    <>
+                      {' · '}
+                      <button
+                        type="button"
+                        onClick={revealLowRelevance}
+                        className="font-semibold text-indigo-600 underline-offset-2 hover:underline"
+                      >
+                        mostra altri {searchMeta.hiddenLowRelevance} meno pertinenti
+                      </button>
+                    </>
+                  )}
+                </span>
+              ) : null}
+            </div>
+          )}
+
+          {showFilters && searchMode !== 'custom' && (
+            <div className="mt-2 flex flex-wrap items-center gap-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+              <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-slate-700">
                 <input
                   type="checkbox"
                   checked={italyOnly}
@@ -565,7 +569,7 @@ export default function FoodSearchModal({
                 Priorità Italia
               </label>
               {searchMode === 'text' && (
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-700">
+                <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-slate-700">
                   <input
                     type="checkbox"
                     checked={showLowRelevance}
@@ -576,47 +580,11 @@ export default function FoodSearchModal({
                     }}
                     className="h-4 w-4 accent-amber-600"
                   />
-                  Mostra anche risultati poco pertinenti
+                  Mostra anche i risultati meno pertinenti
                 </label>
               )}
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-600">
-                {SEARCH_PAGE_SIZE} risultati API per pagina
-              </span>
             </div>
           )}
-
-          <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            {customFoods.length > 0 && <span className="rounded-full bg-fuchsia-50 px-3 py-1 font-bold text-fuchsia-700">{customFoods.length} custom salvati</span>}
-            {searchMeta && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-600">
-                {formatPageLabel(searchMeta)} · {searchMeta.shownFromApi ?? 0}/{searchMeta.totalFromApi ?? 0} risultati API della pagina mostrati
-              </span>
-            )}
-            {searchMeta?.totalAvailableFromApi > 0 && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-600">
-                {searchMeta.totalAvailableFromApi} risultati API totali stimati
-              </span>
-            )}
-            {searchMeta?.italyOnly && <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700">Priorità Italia attiva</span>}
-            {searchMeta?.lowRelevanceCount > 0 && (
-              <span className="rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-700">
-                {searchMeta.hiddenLowRelevance > 0
-                  ? `${searchMeta.hiddenLowRelevance} risultati poco pertinenti nascosti in questa pagina`
-                  : `${searchMeta.lowRelevanceCount} risultati poco pertinenti visibili in fondo`}
-              </span>
-            )}
-            {searchMeta?.highRelevanceCount > 0 && (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700">
-                {searchMeta.highRelevanceCount} risultati pertinenti in questa pagina
-              </span>
-            )}
-            {error && <span className="rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-700">{error}</span>}
-            {empty && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-600">
-                Nessun risultato pertinente in questa pagina. Modifica la ricerca, abilita i risultati poco pertinenti oppure usa Custom manuale.
-              </span>
-            )}
-          </div>
         </header>
 
         <main className="overflow-y-auto p-4 lg:p-5">
@@ -631,11 +599,11 @@ export default function FoodSearchModal({
 
               {customFoods.length > 0 && (
                 <section>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-black text-slate-950">Libreria custom salvata</h3>
-                      <p className="text-sm text-slate-500">Seleziona un alimento già creato oppure eliminalo dalla libreria locale.</p>
-                    </div>
+                  <div className="mb-3">
+                    <h3 className="text-lg font-black text-slate-950">La tua libreria</h3>
+                    <p className="text-sm text-slate-500">
+                      {customFoods.length} alimenti creati da te. Riusali o eliminali.
+                    </p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     {searchCustomFoods(customFoods, '').map((food) => (
@@ -653,7 +621,6 @@ export default function FoodSearchModal({
             </div>
           ) : (
             <>
-              <PaginationControls meta={searchMeta} loading={loading} failedPageRequest={failedPageRequest} onPageChange={handlePageChange} onRetryFailedPage={handleRetryFailedPage} />
               <div className="grid gap-3 md:grid-cols-2">
                 {results.map((food) => (
                   <FoodResultCard
@@ -665,7 +632,13 @@ export default function FoodSearchModal({
                   />
                 ))}
               </div>
-              <PaginationControls meta={searchMeta} loading={loading} failedPageRequest={failedPageRequest} onPageChange={handlePageChange} onRetryFailedPage={handleRetryFailedPage} />
+              <PaginationControls
+                meta={searchMeta}
+                loading={loading}
+                failedPageRequest={failedPageRequest}
+                onPageChange={handlePageChange}
+                onRetryFailedPage={handleRetryFailedPage}
+              />
             </>
           )}
         </main>

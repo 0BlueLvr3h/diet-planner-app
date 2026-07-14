@@ -426,7 +426,6 @@ export async function searchOpenFoodFacts(query, options = {}) {
         highRelevanceCount: 0,
         lowRelevanceCount: 0,
         hiddenLowRelevance: 0,
-        nextPageVisibleCount: 0,
         italyOnly: merged.italyOnly,
         includeLowRelevance: merged.includeLowRelevance,
         page: currentPage,
@@ -439,26 +438,13 @@ export async function searchOpenFoodFacts(query, options = {}) {
   }
 
   const payload = await fetchSearchPayload(trimmed, { ...merged, page: currentPage, pageSize });
-  const rawHasNextPage = payload.totalPages === null
+
+  // Niente prefetch della pagina successiva: scaricava ogni volta due pagine invece
+  // di una, raddoppiando la latenza di ogni ricerca. "Pagina successiva" ora si basa
+  // sui metadati dell'API: puo' capitare di aprire una pagina senza risultati pertinenti.
+  const hasNextPage = payload.totalPages === null
     ? payload.products.length >= pageSize
     : currentPage < payload.totalPages;
-  let hasNextPage = rawHasNextPage && payload.visibleResults.length > 0;
-  let nextPageVisibleCount = null;
-
-  // Controlla in anticipo la pagina successiva: il pulsante "Pagina successiva"
-  // resta disabilitato quando la prossima pagina non ha prodotti effettivamente mostrabili.
-  if (hasNextPage) {
-    try {
-      const nextPayload = await fetchSearchPayload(trimmed, { ...merged, page: currentPage + 1, pageSize });
-      nextPageVisibleCount = nextPayload.visibleResults.length;
-      hasNextPage = nextPageVisibleCount > 0;
-    } catch (prefetchError) {
-      console.warn(prefetchError);
-      nextPageVisibleCount = null;
-    }
-  } else {
-    nextPageVisibleCount = 0;
-  }
 
   return {
     results: payload.visibleResults,
@@ -469,7 +455,6 @@ export async function searchOpenFoodFacts(query, options = {}) {
       highRelevanceCount: payload.highRelevanceCount,
       lowRelevanceCount: payload.lowRelevanceCount,
       hiddenLowRelevance: payload.hiddenLowRelevance,
-      nextPageVisibleCount,
       italyOnly: merged.italyOnly,
       includeLowRelevance: merged.includeLowRelevance,
       page: currentPage,
