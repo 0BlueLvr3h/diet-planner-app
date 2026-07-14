@@ -190,6 +190,20 @@ export function dietReducer(state, action) {
       };
     }
 
+    case 'RENAME_VARIANT': {
+      const { variantId, name } = action.payload;
+      const targetId = variantId ?? state.activeVariantId;
+      const trimmed = String(name ?? '').trim();
+      if (!trimmed) return state;
+
+      return {
+        ...state,
+        variants: state.variants.map((variant) =>
+          variant.id === targetId ? { ...variant, name: trimmed } : variant
+        )
+      };
+    }
+
     case 'SET_ACTIVE_VARIANT':
       return { ...state, activeVariantId: action.payload.variantId };
 
