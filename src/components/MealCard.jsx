@@ -1,5 +1,6 @@
+import { MACRO_KEYS } from '../constants';
 import FoodCard from './FoodCard';
-import { MacroLine } from './MacroBadge';
+import MacroBadge from './MacroBadge';
 import { calculateMealTotals } from '../utils/macros';
 
 export default function MealCard({
@@ -32,17 +33,24 @@ export default function MealCard({
             : 'border-slate-200 bg-slate-50'
       }`}
     >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-xl font-black text-slate-950">{meal.name}</h2>
-          <p className="text-sm text-slate-500">
-            {count} aliment{count === 1 ? 'o' : 'i'}
-          </p>
-          <MacroLine macros={totals} className="mt-1.5" />
+      <div className="mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-slate-950">{meal.name}</h2>
+            <p className="text-sm text-slate-500">
+              {count} aliment{count === 1 ? 'o' : 'i'}
+            </p>
+          </div>
+          <button onClick={() => onAddFood(meal.id)} className="btn-primary shrink-0">
+            Aggiungi alimento
+          </button>
         </div>
-        <button onClick={() => onAddFood(meal.id)} className="btn-primary shrink-0">
-          Aggiungi alimento
-        </button>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {MACRO_KEYS.map((key) => (
+            <MacroBadge key={key} macroKey={key} value={totals[key]} compact />
+          ))}
+        </div>
       </div>
 
       <div className="space-y-3">

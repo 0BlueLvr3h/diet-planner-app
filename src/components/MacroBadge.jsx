@@ -9,41 +9,31 @@ const toneClasses = {
   dark: 'border-slate-700 bg-slate-900 text-slate-100'
 };
 
+// Etichette brevi ma ancora parole, non sigle: "CARBOIDRATI" per intero non entra
+// in un quarto di schermo del telefono e sfondava la card.
+export const MACRO_LABELS_SHORT = {
+  kcal: 'Kcal',
+  protein: 'Prot',
+  carbs: 'Carb',
+  fat: 'Gras'
+};
+
 export default function MacroBadge({ macroKey, value, tone = 'neutral', compact = false }) {
   const unit = MACRO_UNITS[macroKey];
+  const label = compact ? MACRO_LABELS_SHORT[macroKey] : MACRO_LABELS[macroKey];
 
   return (
     <div
-      className={`rounded-2xl border px-3 py-2 text-sm shadow-sm ${toneClasses[tone] ?? toneClasses.neutral} ${
-        compact ? 'min-w-20' : 'min-w-24'
+      className={`min-w-0 rounded-2xl border px-3 py-2 text-sm shadow-sm ${toneClasses[tone] ?? toneClasses.neutral} ${
+        compact ? '' : 'min-w-24'
       }`}
     >
-      <div className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
-        {MACRO_LABELS[macroKey]}
+      <div className="truncate text-[11px] font-semibold uppercase tracking-wide opacity-70">
+        {label}
       </div>
-      <div className="font-bold">
+      <div className="truncate font-bold">
         {roundMacro(value)} {unit}
       </div>
-    </div>
-  );
-}
-
-const SHORT = { protein: 'P', carbs: 'C', fat: 'G' };
-
-// Riga compatta dei macro: sostituisce i quattro riquadri dove lo spazio verticale
-// conta (telefono). Stessa convenzione della vista Settimana.
-export function MacroLine({ macros, className = '' }) {
-  return (
-    <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm ${className}`}>
-      <span className="whitespace-nowrap">
-        <span className="font-black text-slate-900">{roundMacro(macros?.kcal)}</span>
-        <span className="text-slate-400"> kcal</span>
-      </span>
-      {['protein', 'carbs', 'fat'].map((key) => (
-        <span key={key} className="whitespace-nowrap text-slate-400">
-          {SHORT[key]} <span className="font-bold text-slate-700">{roundMacro(macros?.[key])}</span>g
-        </span>
-      ))}
     </div>
   );
 }
