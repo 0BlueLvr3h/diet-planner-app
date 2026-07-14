@@ -51,7 +51,7 @@ function setSessionCookie(res, token) {
   res.cookie('sid', token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,               // -> metti true quando avrai HTTPS
+    secure: true,               // -> metti true quando avrai HTTPS
     maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000,
     path: '/',
   });
