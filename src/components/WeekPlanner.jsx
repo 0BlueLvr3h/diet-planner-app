@@ -1,5 +1,6 @@
 import { MACRO_KEYS } from '../constants';
-import { calculateVariantTotals, roundMacro } from '../utils/macros';
+import { calculateVariantTotals, calculateVariantSodiumMg, roundMacro } from '../utils/macros';
+import { SODIUM_LIMIT_MG } from '../constants';
 
 const DAYS = [
   { id: 'mon', label: 'Lunedì' },
@@ -16,9 +17,10 @@ const TODAY_ID = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().ge
 
 const MACRO_SHORT = { kcal: 'Kcal', protein: 'P', carbs: 'C', fat: 'G' };
 
-function MacroStrip({ totals, dark }) {
+function MacroStrip({ totals, dark, sodiumMg = null }) {
   const num = dark ? 'text-white' : 'text-slate-900';
   const lbl = dark ? 'text-indigo-200' : 'text-slate-400';
+  const sodiumOver = sodiumMg != null && sodiumMg > SODIUM_LIMIT_MG;
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
       {MACRO_KEYS.map((key) => {
@@ -39,6 +41,13 @@ function MacroStrip({ totals, dark }) {
           </span>
         );
       })}
+      {sodiumMg != null && (
+        <span className="whitespace-nowrap">
+          <span className={lbl}>Na </span>
+          <span className={`font-bold ${sodiumOver ? 'text-rose-500' : num}`}>{Math.round(sodiumMg)}</span>
+          <span className={sodiumOver ? 'text-rose-400' : lbl}>mg</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -47,6 +56,7 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
   const assignments = weekAssignments || {};
   const variantById = new Map(variants.map((v) => [v.id, v]));
   const totalsById = new Map(variants.map((v) => [v.id, calculateVariantTotals(v)]));
+  const sodiumById = new Map(variants.map((v) => [v.id, calculateVariantSodiumMg(v)]));
 
   function assignedVariant(dayId) {
     const id = assignments[dayId];
@@ -63,6 +73,11 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
     }
     return acc;
   }, {});
+
+  const averageSodium =
+    assignedDays.length === 0
+      ? 0
+      : assignedDays.reduce((s, v) => s + (sodiumById.get(v.id) || 0), 0) / assignedDays.length;
 
   const todayVariant = assignedVariant(TODAY_ID);
   const todayLabel = DAYS.find((d) => d.id === TODAY_ID)?.label ?? '';
@@ -86,7 +101,7 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
               )}
             </div>
             <div className="mt-3">
-              <MacroStrip totals={totalsById.get(todayVariant.id)} dark />
+              <MacroStrip totals={totalsById.get(todayVariant.id)} sodiumMg={sodiumById.get(todayVariant.id)} dark />
             </div>
           </>
         ) : (
@@ -135,7 +150,7 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
 
                 {variant && (
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                    <MacroStrip totals={totalsById.get(variant.id)} />
+                    <MacroStrip totals={totalsById.get(variant.id)} sodiumMg={sodiumById.get(variant.id)} />
                     {onOpenVariant && (
                       <button
                         onClick={() => onOpenVariant(variant.id)}
@@ -159,7 +174,7 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
             <h2 className="text-lg font-black text-slate-950">Media giornaliera</h2>
             <span className="text-xs text-slate-400">su {assignedDays.length} giorni assegnati</span>
           </div>
-          <MacroStrip totals={average} />
+          <MacroStrip totals={average} sodiumMg={averageSodium} />
         </section>
       )}
     </div>
