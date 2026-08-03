@@ -44,6 +44,8 @@ function BarcodeFoodRow({ food, variants, dispatch }) {
   const [mealId, setMealId] = useState(meals[0]?.id ?? '');
   const [grams, setGrams] = useState(food.defaultGrams ?? 100);
   const [assignedTo, setAssignedTo] = useState('');
+  const [editingSodium, setEditingSodium] = useState(false);
+  const [saltInput, setSaltInput] = useState('');
 
   // Se cambia la variante scelta (o le varianti disponibili), riallinea il pasto.
   useEffect(() => {
@@ -71,6 +73,21 @@ function BarcodeFoodRow({ food, variants, dispatch }) {
 
   function remove() {
     dispatch({ type: 'DELETE_BARCODE_FOOD', payload: { key: barcodeFoodKey(food) } });
+  }
+
+  function openSodiumEditor() {
+    // Precompilo col SALE corrispondente al sodio attuale (sodio x 2.5), se c'e'.
+    const currentSodiumG = Number(food?.macrosPer100g?.sodium);
+    setSaltInput(Number.isFinite(currentSodiumG) && currentSodiumG > 0 ? String(+(currentSodiumG * 2.5).toFixed(3)) : '');
+    setEditingSodium(true);
+  }
+
+  function saveSodium() {
+    const salt = Number(String(saltInput).replace(',', '.'));
+    if (!Number.isFinite(salt) || salt < 0) return;
+    const sodiumG = salt / 2.5; // sale -> sodio
+    dispatch({ type: 'SET_BARCODE_FOOD_SODIUM', payload: { key: barcodeFoodKey(food), sodiumG } });
+    setEditingSodium(false);
   }
 
   return (
@@ -147,13 +164,47 @@ function BarcodeFoodRow({ food, variants, dispatch }) {
           />
         </label>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={assign} disabled={!mealId} className="btn-primary disabled:cursor-not-allowed disabled:opacity-40">
             Assegna
           </button>
+          <button onClick={openSodiumEditor} className="btn-secondary">Sodio</button>
           <button onClick={remove} className="btn-danger">Rimuovi</button>
         </div>
       </div>
+
+      {editingSodium && (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <div className="text-sm font-bold text-slate-700">Correggi il sodio</div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Inserisci il <strong>sale</strong> per 100 g come scritto in etichetta: lo converto in sodio (÷ 2.5).
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Sale / 100 g
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={saltInput}
+                onChange={(event) => setSaltInput(event.target.value)}
+                placeholder="es. 1.0"
+                className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 focus:border-indigo-400 focus:outline-none"
+              />
+            </label>
+            <span className="pb-2 text-sm text-slate-600">
+              = {(() => {
+                const salt = Number(String(saltInput).replace(',', '.'));
+                return Number.isFinite(salt) && salt >= 0 ? `${Math.round((salt / 2.5) * 1000)} mg di sodio` : '— mg di sodio';
+              })()}
+            </span>
+            <div className="flex gap-2">
+              <button onClick={saveSodium} className="btn-primary">Salva</button>
+              <button onClick={() => setEditingSodium(false)} className="btn-secondary">Annulla</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {assignedTo ? (
         <p className="mt-2 text-sm font-semibold text-emerald-600">Aggiunto a {assignedTo}</p>

@@ -401,6 +401,20 @@ export function dietReducer(state, action) {
       };
     }
 
+    case 'SET_BARCODE_FOOD_SODIUM': {
+      // Imposta il sodio (in g/100g) di un alimento del catalogo barcode.
+      // La UI passa il valore gia' convertito da sale a sodio.
+      const { key, sodiumG } = action.payload;
+      return {
+        ...state,
+        barcodeFoods: (state.barcodeFoods ?? []).map((food) =>
+          barcodeFoodKey(food) === key
+            ? { ...food, macrosPer100g: { ...food.macrosPer100g, sodium: sodiumG } }
+            : food
+        )
+      };
+    }
+
     case 'DELETE_BARCODE_FOOD': {
       const { key } = action.payload;
       return {
