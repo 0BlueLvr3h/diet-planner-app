@@ -5,6 +5,14 @@ export function toNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+// Sodio memorizzato in g/100g -> mostrato in mg per 100g (piu' leggibile su un'etichetta).
+// Ritorna null se il dato non c'e' proprio.
+export function sodiumMgPer100g(macrosPer100g) {
+  const value = Number(macrosPer100g?.sodium);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value * 1000);
+}
+
 export function roundMacro(value, digits = 1) {
   const factor = 10 ** digits;
   return Math.round(toNumber(value) * factor) / factor;

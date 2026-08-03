@@ -31,7 +31,8 @@ export function normalizeBarcodeFood(product) {
       kcal: macroValue(product?.macrosPer100g?.kcal),
       protein: macroValue(product?.macrosPer100g?.protein),
       carbs: macroValue(product?.macrosPer100g?.carbs),
-      fat: macroValue(product?.macrosPer100g?.fat)
+      fat: macroValue(product?.macrosPer100g?.fat),
+      sodium: macroValue(product?.macrosPer100g?.sodium)
     },
     missingMacros: Array.isArray(product?.missingMacros) ? product.missingMacros : [],
     hasIncompleteMacros: Boolean(product?.hasIncompleteMacros),

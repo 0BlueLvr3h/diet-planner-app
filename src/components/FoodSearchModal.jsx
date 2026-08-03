@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MACRO_KEYS, MACRO_LABELS, MACRO_UNITS } from '../constants';
 import { MACRO_LABELS_SHORT } from './MacroBadge';
+import { sodiumMgPer100g } from '../utils/macros';
 import { getOpenFoodFactsProductByBarcode, searchOpenFoodFacts } from '../services/openFoodFacts';
 import {
   createCustomFoodFromForm,
@@ -64,7 +65,7 @@ function formatPageLabel(meta) {
 
 function ResultMacroRow({ food }) {
   return (
-    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
       {MACRO_KEYS.map((key) => (
         <div key={key} className="min-w-0 rounded-xl bg-slate-100 px-2 py-1 text-slate-700">
           <span className="block truncate font-semibold uppercase text-slate-400">{MACRO_LABELS_SHORT[key]}</span>
@@ -73,6 +74,12 @@ function ResultMacroRow({ food }) {
           </span>
         </div>
       ))}
+      <div className="min-w-0 rounded-xl bg-slate-100 px-2 py-1 text-slate-700">
+        <span className="block truncate font-semibold uppercase text-slate-400">Sodio</span>
+        <span className="font-black">
+          {sodiumMgPer100g(food.macrosPer100g) === null ? 'n/d' : `${sodiumMgPer100g(food.macrosPer100g)} mg`}
+        </span>
+      </div>
     </div>
   );
 }

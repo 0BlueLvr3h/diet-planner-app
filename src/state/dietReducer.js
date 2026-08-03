@@ -368,6 +368,32 @@ export function dietReducer(state, action) {
       };
     }
 
+    case 'REFRESH_FOOD_MACROS': {
+      // Aggiorna i macro (sodio incluso) degli alimenti che matchano un barcode,
+      // ovunque siano: nelle varianti/pasti. Non tocca grammi, id, posizione.
+      const byBarcode = action.payload.byBarcode ?? {};
+      return {
+        ...state,
+        variants: state.variants.map((variant) => ({
+          ...variant,
+          meals: variant.meals.map((meal) => ({
+            ...meal,
+            foods: meal.foods.map((food) => {
+              const code = typeof food?.barcode === 'string' ? food.barcode.trim() : '';
+              const fresh = code && byBarcode[code];
+              if (!fresh) return food;
+              return {
+                ...food,
+                macrosPer100g: { ...food.macrosPer100g, ...fresh.macrosPer100g },
+                image: food.image || fresh.image || '',
+                name: food.name || fresh.name
+              };
+            })
+          }))
+        }))
+      };
+    }
+
     case 'UPSERT_BARCODE_FOOD': {
       return {
         ...state,

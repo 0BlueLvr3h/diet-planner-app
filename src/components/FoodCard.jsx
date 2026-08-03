@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MACRO_KEYS } from '../constants';
+import { sodiumMgPer100g } from '../utils/macros';
 import MacroBadge from './MacroBadge';
 import WarningMessage from './WarningMessage';
 import { calculateFoodMacros } from '../utils/macros';
@@ -135,10 +136,16 @@ export default function FoodCard({ food, mealId, meals = [], dispatch, onSwap, o
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {MACRO_KEYS.map((key) => (
               <MacroBadge key={key} macroKey={key} value={calculated[key]} compact />
             ))}
+            <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+              <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sodio</div>
+              <div className="truncate font-bold text-slate-700">
+                {sodiumMgPer100g(food.macrosPer100g) === null ? 'n/d' : `${sodiumMgPer100g(food.macrosPer100g)} mg`}
+              </div>
+            </div>
           </div>
 
           <WarningMessage incompleteMacros={missingMacros} />

@@ -31,6 +31,7 @@ export default function App({ username, onLogout }) {
   const [section, setSection] = useState('diet');
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState('');
+  const [reloadState, setReloadState] = useState({ running: false, done: 0, total: 0, message: '' });
   const [searchContext, setSearchContext] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [lastSavedAt, setLastSavedAt] = useState(() => getStoredMetadata()?.savedAt ?? null);
@@ -210,6 +211,62 @@ export default function App({ username, onLogout }) {
     }
   }
 
+  // Ricarica i dati da Open Food Facts per gli alimenti gia' presenti (catalogo
+  // barcode + quelli dentro le varianti), aggiornando i valori come il sodio senza
+  // doverli rimuovere e reinserire.
+  async function handleReloadData() {
+    if (reloadState.running) return;
+
+    const codes = new Set();
+    (state.barcodeFoods ?? []).forEach((food) => {
+      const code = typeof food?.barcode === 'string' ? food.barcode.trim() : '';
+      if (code) codes.add(code);
+    });
+    state.variants.forEach((variant) =>
+      variant.meals.forEach((meal) =>
+        meal.foods.forEach((food) => {
+          const code = typeof food?.barcode === 'string' ? food.barcode.trim() : '';
+          if (code) codes.add(code);
+        })
+      )
+    );
+
+    const list = [...codes];
+    if (list.length === 0) {
+      setReloadState({ running: false, done: 0, total: 0, message: 'Nessun alimento con barcode da aggiornare.' });
+      return;
+    }
+
+    setReloadState({ running: true, done: 0, total: list.length, message: '' });
+    const byBarcode = {};
+    let updated = 0;
+
+    for (let i = 0; i < list.length; i += 1) {
+      const code = list[i];
+      try {
+        const product = await getOpenFoodFactsProductByBarcode(code);
+        if (product) {
+          byBarcode[code] = product;
+          dispatch({ type: 'UPSERT_BARCODE_FOOD', payload: { food: product } });
+          updated += 1;
+        }
+      } catch {
+        // prodotto non aggiornato: proseguo con gli altri
+      }
+      setReloadState((current) => ({ ...current, done: i + 1 }));
+    }
+
+    // aggiorno anche gli alimenti dentro le varianti (tracciato: una voce di undo)
+    dispatchTracked({ type: 'REFRESH_FOOD_MACROS', payload: { byBarcode } });
+
+    setReloadState({
+      running: false,
+      done: list.length,
+      total: list.length,
+      message: `Aggiornati ${updated} di ${list.length} alimenti.`
+    });
+  }
+
   async function handleSaveNow() {
     setSaveStatus('saving');
     await doSave();
@@ -379,6 +436,8 @@ export default function App({ username, onLogout }) {
               variants={state.variants}
               dispatch={dispatchTracked}
               onScan={() => { setScanError(''); setScanning(true); }}
+              onReloadData={handleReloadData}
+              reloadState={reloadState}
             />
           </>
         )}
