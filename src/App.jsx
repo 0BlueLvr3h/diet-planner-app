@@ -32,6 +32,7 @@ export default function App({ username, onLogout }) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState('');
   const [reloadState, setReloadState] = useState({ running: false, done: 0, total: 0, message: '' });
+  const [variantSyncMsg, setVariantSyncMsg] = useState('');
   const [searchContext, setSearchContext] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [lastSavedAt, setLastSavedAt] = useState(() => getStoredMetadata()?.savedAt ?? null);
@@ -214,6 +215,26 @@ export default function App({ username, onLogout }) {
   // Ricarica i dati da Open Food Facts per gli alimenti gia' presenti (catalogo
   // barcode + quelli dentro le varianti), aggiornando i valori come il sodio senza
   // doverli rimuovere e reinserire.
+  // Propaga i dati della libreria (catalogo barcode + alimenti a mano) agli alimenti
+  // gia' inseriti nelle varianti. E' la versione automatica dello swap: fa comparire
+  // il sodio (e ogni altro valore aggiornato) senza rifare lo swap a mano, e senza
+  // ripescare da Open Food Facts (quindi rispetta le correzioni manuali).
+  function handleSyncVariantsFromLibrary() {
+    const byBarcode = {};
+    (state.barcodeFoods ?? []).forEach((food) => {
+      const code = typeof food?.barcode === 'string' ? food.barcode.trim() : '';
+      if (code) byBarcode[code] = food;
+    });
+    const byProductId = {};
+    (state.customFoods ?? []).forEach((food) => {
+      if (food?.id) byProductId[food.id] = food;
+    });
+
+    dispatchTracked({ type: 'REFRESH_FOOD_MACROS', payload: { byBarcode, byProductId } });
+    setVariantSyncMsg('Dati alimenti aggiornati dalla libreria (sodio incluso).');
+    window.setTimeout(() => setVariantSyncMsg(''), 4000);
+  }
+
   async function handleReloadData() {
     if (reloadState.running) return;
 
@@ -399,8 +420,25 @@ export default function App({ username, onLogout }) {
                   Trascina le card alimento da un pasto all'altro per riorganizzare il modello.
                 </p>
               </div>
-              <button onClick={addMeal} className="btn-secondary">Aggiungi pasto</button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleSyncVariantsFromLibrary}
+                  title="Aggiorna i valori (sodio incluso) degli alimenti di tutte le varianti dalla libreria"
+                  className="flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Aggiorna dati
+                </button>
+                <button onClick={addMeal} className="btn-secondary">Aggiungi pasto</button>
+              </div>
             </section>
+            {variantSyncMsg && (
+              <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                {variantSyncMsg}
+              </p>
+            )}
 
             <div className="space-y-5">
               {activeVariant?.meals.map((meal) => (

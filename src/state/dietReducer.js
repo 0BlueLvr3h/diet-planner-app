@@ -383,7 +383,9 @@ export function dietReducer(state, action) {
             ...meal,
             foods: meal.foods.map((food) => {
               const code = typeof food?.barcode === 'string' ? food.barcode.trim() : '';
-              const fresh = code && byBarcode[code];
+              // match per barcode e, per gli alimenti a mano (senza barcode), per productId
+              const byId = action.payload.byProductId ?? {};
+              const fresh = (code && byBarcode[code]) || (food?.productId && byId[food.productId]);
               if (!fresh) return food;
               return {
                 ...food,
