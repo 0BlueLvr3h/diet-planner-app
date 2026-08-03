@@ -9,6 +9,14 @@ export const MACRO_LABELS = {
 
 export const SODIUM_LIMIT_MG = 2000; // soglia consigliata di sodio al giorno
 
+// Tolleranza sul sodio. NB: NON e' un margine "biologicamente sicuro" (il rapporto
+// sodio/pressione e' lineare, senza soglie). E' il margine entro cui la STIMA non e'
+// distinguibile dal limite, vista l'imprecisione dei dati (valori OFF approssimativi,
+// alimenti n/d che contano 0, grammi a occhio). Sotto: neutro. Tra limite e limite+5%:
+// "vicino al limite" (giallo). Oltre: rosso.
+export const SODIUM_TOLERANCE_PCT = 5;
+export const SODIUM_WARN_MG = Math.round(SODIUM_LIMIT_MG * (1 + SODIUM_TOLERANCE_PCT / 100)); // 2100
+
 export const MACRO_UNITS = {
   kcal: 'kcal',
   protein: 'g',

@@ -92,7 +92,7 @@ export default function FoodLibrary({ customFoods = [], barcodeFoods = [], dispa
       // per i custom ri-salvo l'alimento con il sodio aggiornato
       dispatch({
         type: 'UPSERT_CUSTOM_FOOD',
-        payload: { food: { ...food, macrosPer100g: { ...food.macrosPer100g, sodium: sodiumG } } }
+        payload: { food: { ...food, macrosPer100g: { ...food.macrosPer100g, sodium: sodiumG, sodiumConfirmed: true } } }
       });
     }
     setEditing(null);

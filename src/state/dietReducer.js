@@ -108,6 +108,23 @@ export function createDefaultState() {
   };
 }
 
+// Migrazione una-tantum: prima OFF salvava sodium:0 quando il dato mancava (non
+// verificato). Ora quello 0 non verificato diventa null (n/d), cosi' "0 mg" resta
+// riservato a chi ha davvero confermato lo zero (flag sodiumConfirmed).
+function migrateSodiumZero(macros) {
+  if (!macros || typeof macros !== 'object') return macros;
+  if (macros.sodium === 0 && !macros.sodiumConfirmed) {
+    return { ...macros, sodium: null };
+  }
+  return macros;
+}
+
+function migrateFoodSodium(food) {
+  if (!food?.macrosPer100g) return food;
+  const migrated = migrateSodiumZero(food.macrosPer100g);
+  return migrated === food.macrosPer100g ? food : { ...food, macrosPer100g: migrated };
+}
+
 export function normalizeAppState(candidate) {
   if (!candidate?.variants?.length) return createDefaultState();
 
@@ -118,10 +135,16 @@ export function normalizeAppState(candidate) {
   return {
     target: { ...DEFAULT_TARGET, ...candidate.target },
     tolerance: { ...DEFAULT_TOLERANCE, ...candidate.tolerance },
-    variants: candidate.variants,
+    variants: candidate.variants.map((variant) => ({
+      ...variant,
+      meals: (variant.meals ?? []).map((meal) => ({
+        ...meal,
+        foods: (meal.foods ?? []).map(migrateFoodSodium)
+      }))
+    })),
     activeVariantId,
-    customFoods: normalizeCustomFoods(candidate.customFoods ?? []),
-    barcodeFoods: normalizeBarcodeFoods(candidate.barcodeFoods ?? []),
+    customFoods: normalizeCustomFoods(candidate.customFoods ?? []).map(migrateFoodSodium),
+    barcodeFoods: normalizeBarcodeFoods(candidate.barcodeFoods ?? []).map(migrateFoodSodium),
     weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {},
     calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null
   };
@@ -414,7 +437,7 @@ export function dietReducer(state, action) {
         ...state,
         barcodeFoods: (state.barcodeFoods ?? []).map((food) =>
           barcodeFoodKey(food) === key
-            ? { ...food, macrosPer100g: { ...food.macrosPer100g, sodium: sodiumG } }
+            ? { ...food, macrosPer100g: { ...food.macrosPer100g, sodium: sodiumG, sodiumConfirmed: true } }
             : food
         )
       };

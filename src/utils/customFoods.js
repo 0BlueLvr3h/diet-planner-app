@@ -23,6 +23,15 @@ function normalizeMacroValue(value) {
   return toNumber(value, 0);
 }
 
+// Il sodio è diverso dai 4 macro: un campo VUOTO significa "non lo so" (n/d = null),
+// mentre 0 è un valore valido ("sale 0 g" in etichetta). Per questo non uso il
+// fallback a 0 come per gli altri macro.
+function normalizeSodiumValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
 export function validateCustomFoodForm(form) {
   const errors = [];
 
@@ -61,7 +70,7 @@ export function createCustomFoodFromForm(form) {
       protein: normalizeMacroValue(form.protein),
       carbs: normalizeMacroValue(form.carbs),
       fat: normalizeMacroValue(form.fat),
-      sodium: normalizeMacroValue(form.sodium)
+      sodium: normalizeSodiumValue(form.sodium)
     },
     missingMacros: [],
     hasIncompleteMacros: false,
@@ -88,7 +97,8 @@ export function normalizeCustomFoodProduct(food) {
       protein: normalizeMacroValue(food?.macrosPer100g?.protein),
       carbs: normalizeMacroValue(food?.macrosPer100g?.carbs),
       fat: normalizeMacroValue(food?.macrosPer100g?.fat),
-      sodium: normalizeMacroValue(food?.macrosPer100g?.sodium)
+      sodium: normalizeSodiumValue(food?.macrosPer100g?.sodium),
+      ...(food?.macrosPer100g?.sodiumConfirmed ? { sodiumConfirmed: true } : {})
     },
     missingMacros: [],
     hasIncompleteMacros: false,

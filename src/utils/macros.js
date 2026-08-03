@@ -8,16 +8,32 @@ export function toNumber(value, fallback = 0) {
 // Sodio memorizzato in g/100g -> mostrato in mg per 100g (piu' leggibile su un'etichetta).
 // Ritorna null se il dato non c'e' proprio.
 export function sodiumMgPer100g(macrosPer100g) {
-  const value = Number(macrosPer100g?.sodium);
-  if (!Number.isFinite(value) || value <= 0) return null;
+  const raw = macrosPer100g?.sodium;
+  // null/undefined/'' = dato assente (n/d). 0 = zero verificato (es. etichetta "sale 0 g").
+  if (raw === null || raw === undefined || raw === '') return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) return null;
   return Math.round(value * 1000);
 }
 
 // Sodio dell'alimento in mg, scalato sui grammi realmente presenti (come gli altri
 // macro nella card). null se il dato di sodio non c'e'.
+// Stato del sodio rispetto a soglia e tolleranza: 'ok' (sotto soglia),
+// 'warn' (tra soglia e soglia+tolleranza: dentro il rumore della misura),
+// 'over' (oltre, sforamento reale). Prende i limiti come argomenti per non creare
+// dipendenze circolari con constants.
+export function sodiumStatus(sodiumMg, limitMg, warnMg) {
+  if (sodiumMg == null) return 'na';
+  if (sodiumMg <= limitMg) return 'ok';
+  if (sodiumMg <= warnMg) return 'warn';
+  return 'over';
+}
+
 export function sodiumMgForFood(food) {
-  const per100g = Number(food?.macrosPer100g?.sodium); // g/100g
-  if (!Number.isFinite(per100g) || per100g <= 0) return null;
+  const raw = food?.macrosPer100g?.sodium;
+  if (raw === null || raw === undefined || raw === '') return null; // n/d
+  const per100g = Number(raw); // g/100g
+  if (!Number.isFinite(per100g) || per100g < 0) return null;
   const grams = toNumber(food?.grams, 0);
   return Math.round((per100g * grams) / 100 * 1000);
 }

@@ -353,7 +353,8 @@ export function normalizeOpenFoodFactsProduct(product) {
       fat: parseMacro(nutriments.fat_100g),
       // sodio in g/100g (null se OFF non lo ha): NON influisce su selectable,
       // e' solo un tracciamento aggiuntivo. Convertito da sale se necessario.
-      sodium: parseSodiumG(nutriments) ?? 0
+      // dato mancante -> null (n/d), NON 0: 0 significherebbe 'verificato a zero'
+      sodium: parseSodiumG(nutriments)
     }
   };
 

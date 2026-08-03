@@ -2,6 +2,12 @@ import { uid } from './id';
 import { toNumber } from './macros';
 
 // Un valore macro finito oppure null (JSON-safe) quando il dato manca da Open Food Facts.
+function sodiumValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function macroValue(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -32,7 +38,8 @@ export function normalizeBarcodeFood(product) {
       protein: macroValue(product?.macrosPer100g?.protein),
       carbs: macroValue(product?.macrosPer100g?.carbs),
       fat: macroValue(product?.macrosPer100g?.fat),
-      sodium: macroValue(product?.macrosPer100g?.sodium)
+      sodium: sodiumValue(product?.macrosPer100g?.sodium),
+      ...(product?.macrosPer100g?.sodiumConfirmed ? { sodiumConfirmed: true } : {})
     },
     missingMacros: Array.isArray(product?.missingMacros) ? product.missingMacros : [],
     hasIncompleteMacros: Boolean(product?.hasIncompleteMacros),

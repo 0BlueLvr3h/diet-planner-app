@@ -1,6 +1,6 @@
 import { MACRO_KEYS } from '../constants';
-import { calculateVariantTotals, calculateVariantSodiumMg, roundMacro } from '../utils/macros';
-import { SODIUM_LIMIT_MG } from '../constants';
+import { calculateVariantTotals, calculateVariantSodiumMg, roundMacro, sodiumStatus } from '../utils/macros';
+import { SODIUM_LIMIT_MG, SODIUM_WARN_MG } from '../constants';
 
 const DAYS = [
   { id: 'mon', label: 'Lunedì' },
@@ -20,7 +20,7 @@ const MACRO_SHORT = { kcal: 'Kcal', protein: 'P', carbs: 'C', fat: 'G' };
 function MacroStrip({ totals, dark, sodiumMg = null }) {
   const num = dark ? 'text-white' : 'text-slate-900';
   const lbl = dark ? 'text-indigo-200' : 'text-slate-400';
-  const sodiumOver = sodiumMg != null && sodiumMg > SODIUM_LIMIT_MG;
+  const sodStatus = sodiumStatus(sodiumMg, SODIUM_LIMIT_MG, SODIUM_WARN_MG);
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
       {MACRO_KEYS.map((key) => {
@@ -44,8 +44,10 @@ function MacroStrip({ totals, dark, sodiumMg = null }) {
       {sodiumMg != null && (
         <span className="whitespace-nowrap">
           <span className={lbl}>Na </span>
-          <span className={`font-bold ${sodiumOver ? 'text-rose-500' : num}`}>{Math.round(sodiumMg)}</span>
-          <span className={sodiumOver ? 'text-rose-400' : lbl}>mg</span>
+          <span className={`font-bold ${sodStatus === 'over' ? 'text-rose-500' : sodStatus === 'warn' ? 'text-amber-500' : num}`}>
+            {Math.round(sodiumMg)}
+          </span>
+          <span className={sodStatus === 'over' ? 'text-rose-400' : sodStatus === 'warn' ? 'text-amber-400' : lbl}>mg</span>
         </span>
       )}
     </div>
