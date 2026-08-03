@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MACRO_KEYS } from '../constants';
-import { sodiumMgPer100g } from '../utils/macros';
+import { sodiumMgForFood } from '../utils/macros';
 import MacroBadge from './MacroBadge';
 import WarningMessage from './WarningMessage';
 import { calculateFoodMacros } from '../utils/macros';
@@ -143,7 +143,7 @@ export default function FoodCard({ food, mealId, meals = [], dispatch, onSwap, o
             <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
               <div className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sodio</div>
               <div className="truncate font-bold text-slate-700">
-                {sodiumMgPer100g(food.macrosPer100g) === null ? 'n/d' : `${sodiumMgPer100g(food.macrosPer100g)} mg`}
+                {sodiumMgForFood(food) === null ? 'n/d' : `${sodiumMgForFood(food)} mg`}
               </div>
             </div>
           </div>

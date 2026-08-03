@@ -13,6 +13,15 @@ export function sodiumMgPer100g(macrosPer100g) {
   return Math.round(value * 1000);
 }
 
+// Sodio dell'alimento in mg, scalato sui grammi realmente presenti (come gli altri
+// macro nella card). null se il dato di sodio non c'e'.
+export function sodiumMgForFood(food) {
+  const per100g = Number(food?.macrosPer100g?.sodium); // g/100g
+  if (!Number.isFinite(per100g) || per100g <= 0) return null;
+  const grams = toNumber(food?.grams, 0);
+  return Math.round((per100g * grams) / 100 * 1000);
+}
+
 export function roundMacro(value, digits = 1) {
   const factor = 10 ** digits;
   return Math.round(toNumber(value) * factor) / factor;
