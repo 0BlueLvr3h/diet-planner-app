@@ -28,7 +28,10 @@ function makeFoodItem(product, grams = 100, options = {}) {
       kcal: product.macrosPer100g?.kcal,
       protein: product.macrosPer100g?.protein,
       carbs: product.macrosPer100g?.carbs,
-      fat: product.macrosPer100g?.fat
+      fat: product.macrosPer100g?.fat,
+      // il sodio va portato dentro il pasto: senza questa riga, un alimento con
+      // sodio (es. inserito a mano nel catalogo) lo perdeva una volta assegnato.
+      sodium: product.macrosPer100g?.sodium
     },
     touched: options.touched ?? false,
     missingMacros: product.missingMacros ?? [],
