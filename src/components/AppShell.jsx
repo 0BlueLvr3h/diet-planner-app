@@ -3,6 +3,7 @@ import { useState } from 'react';
 const NAV = [
   { id: 'diet', label: 'Dieta' },
   { id: 'barcode', label: 'Barcode' },
+  { id: 'library', label: 'Alimenti' },
   { id: 'week', label: 'Settimana' },
   { id: 'calculator', label: 'Calcolatore' },
   { id: 'settings', label: 'Impostazioni' },

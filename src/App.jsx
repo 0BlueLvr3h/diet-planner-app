@@ -5,6 +5,7 @@ import CalorieCalculator from './components/CalorieCalculator';
 import BarcodeFoodMenu from './components/BarcodeFoodMenu';
 import DiffPanel from './components/DiffPanel';
 import FoodSearchModal from './components/FoodSearchModal';
+import FoodLibrary from './components/FoodLibrary';
 import MealCard from './components/MealCard';
 import PersistencePanel from './components/PersistencePanel';
 import SaveBar from './components/SaveBar';
@@ -478,6 +479,14 @@ export default function App({ username, onLogout }) {
               reloadState={reloadState}
             />
           </>
+        )}
+
+        {section === 'library' && (
+          <FoodLibrary
+            customFoods={state.customFoods}
+            barcodeFoods={state.barcodeFoods}
+            dispatch={dispatchTracked}
+          />
         )}
 
         {section === 'calculator' && (
