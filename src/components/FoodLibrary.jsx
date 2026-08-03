@@ -189,7 +189,28 @@ export default function FoodLibrary({ customFoods = [], barcodeFoods = [], dispa
             return (
               <div key={food.key} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-16 sm:w-16">
+                      {food.image ? (
+                        <img
+                          src={food.image}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                            if (event.currentTarget.nextSibling) event.currentTarget.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="h-full w-full items-center justify-center text-xl"
+                        style={{ display: food.image ? 'none' : 'flex' }}
+                      >
+                        🍽️
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-black text-slate-900">{food.name}</span>
                       <span
@@ -220,6 +241,7 @@ export default function FoodLibrary({ customFoods = [], barcodeFoods = [], dispa
                         </span>
                         <span className="text-slate-400"> /100g</span>
                       </span>
+                    </div>
                     </div>
                   </div>
 
