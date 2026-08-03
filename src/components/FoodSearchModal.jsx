@@ -24,6 +24,31 @@ const sourceLabels = {
 
 // Un codice a barre e' solo cifre (EAN-8, UPC, EAN-13...). Se l'utente scrive
 // quello, cerchiamo il prodotto esatto invece di fare una ricerca testuale.
+// Fonde il risultato OFF con la versione gia' in libreria (se esiste), senza perdere
+// i dati curati a mano. Regola: parto da OFF (dati freschi) ma, campo per campo, se OFF
+// non ha un valore e la libreria si', tengo quello della libreria. Cosi' il sodio
+// inserito a mano non viene cancellato da un n/d di Open Food Facts.
+function hasNum(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
+}
+
+function mergeWithSaved(fromOff, saved) {
+  if (!fromOff) return saved ?? null; // OFF non risponde: tengo quello che ho
+  if (!saved) return fromOff;         // non l'avevo: uso OFF
+
+  const offMacros = fromOff.macrosPer100g ?? {};
+  const savedMacros = saved.macrosPer100g ?? {};
+  const mergedMacros = { ...offMacros };
+  ['kcal', 'protein', 'carbs', 'fat', 'sodium'].forEach((key) => {
+    if (!hasNum(mergedMacros[key]) && hasNum(savedMacros[key])) {
+      mergedMacros[key] = savedMacros[key];
+    }
+  });
+
+  return { ...fromOff, macrosPer100g: mergedMacros };
+}
+
 function looksLikeBarcode(value) {
   return /^\d{8,14}$/.test(String(value).trim().replace(/\s+/g, ''));
 }
@@ -404,8 +429,14 @@ export default function FoodSearchModal({
     try {
       if (asBarcode) {
         const found = await getOpenFoodFactsProductByBarcode(term, { italyOnly: useItalyOnly });
-        if (found) onBarcodeFoodFound?.(found);
-        setApiResults(found ? [found] : []);
+        // Se ho gia' questo barcode in libreria, NON sovrascrivo alla cieca con OFF:
+        // conservo i dati che ho gia' curato (in primis il sodio, che OFF spesso non ha).
+        const saved = (barcodeFoods ?? []).find(
+          (item) => (item?.barcode || '').trim() === term.trim()
+        );
+        const merged = mergeWithSaved(found, saved);
+        if (merged) onBarcodeFoodFound?.(merged);
+        setApiResults(merged ? [merged] : []);
         setSearchMeta({
           totalFromApi: found ? 1 : 0,
           shownFromApi: found ? 1 : 0,
