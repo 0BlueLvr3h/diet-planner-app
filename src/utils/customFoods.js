@@ -11,7 +11,8 @@ export const EMPTY_CUSTOM_FOOD_FORM = {
   kcal: '',
   protein: '',
   carbs: '',
-  fat: ''
+  fat: '',
+  sodium: ''
 };
 
 export function makeEmptyCustomFoodForm() {
@@ -59,7 +60,8 @@ export function createCustomFoodFromForm(form) {
       kcal: normalizeMacroValue(form.kcal),
       protein: normalizeMacroValue(form.protein),
       carbs: normalizeMacroValue(form.carbs),
-      fat: normalizeMacroValue(form.fat)
+      fat: normalizeMacroValue(form.fat),
+      sodium: normalizeMacroValue(form.sodium)
     },
     missingMacros: [],
     hasIncompleteMacros: false,
@@ -85,7 +87,8 @@ export function normalizeCustomFoodProduct(food) {
       kcal: normalizeMacroValue(food?.macrosPer100g?.kcal),
       protein: normalizeMacroValue(food?.macrosPer100g?.protein),
       carbs: normalizeMacroValue(food?.macrosPer100g?.carbs),
-      fat: normalizeMacroValue(food?.macrosPer100g?.fat)
+      fat: normalizeMacroValue(food?.macrosPer100g?.fat),
+      sodium: normalizeMacroValue(food?.macrosPer100g?.sodium)
     },
     missingMacros: [],
     hasIncompleteMacros: false,

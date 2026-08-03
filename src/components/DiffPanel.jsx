@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MACRO_KEYS, MACRO_LABELS, MACRO_UNITS } from '../constants';
+import { MACRO_KEYS, MACRO_LABELS, MACRO_UNITS, SODIUM_LIMIT_MG } from '../constants';
 import { formatSigned, getMacroStatus, isDiffInsideTolerance, roundMacro } from '../utils/macros';
 
 const statusClasses = {
@@ -8,8 +8,9 @@ const statusClasses = {
   danger: 'border-rose-200 bg-rose-50 text-rose-800'
 };
 
-export default function DiffPanel({ target, totals, diff, tolerance }) {
+export default function DiffPanel({ target, totals, diff, tolerance, sodiumMg = 0 }) {
   const balanced = isDiffInsideTolerance(diff, tolerance);
+  const sodiumOver = sodiumMg > SODIUM_LIMIT_MG;
 
   // Aperto di default su desktop, chiuso su mobile (dove occupava 2/3 dello schermo).
   const [expanded, setExpanded] = useState(
@@ -53,7 +54,27 @@ export default function DiffPanel({ target, totals, diff, tolerance }) {
       </button>
 
       {expanded && (
-        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        <div className="mt-4 space-y-3">
+          <div
+            className={`rounded-2xl border p-3 ${
+              sodiumOver ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-slate-600 bg-slate-800 text-slate-100'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wide opacity-80">Sodio</span>
+              <span className="text-xs font-semibold opacity-70">max {SODIUM_LIMIT_MG} mg</span>
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-lg font-black">{Math.round(sodiumMg)} mg</span>
+              {sodiumOver && (
+                <span className="text-xs font-bold uppercase tracking-wide text-rose-700">
+                  Oltre la soglia (+{Math.round(sodiumMg - SODIUM_LIMIT_MG)} mg)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-4">
           {MACRO_KEYS.map((key) => {
             const status = getMacroStatus(diff[key], tolerance[key]);
             return (
@@ -81,6 +102,7 @@ export default function DiffPanel({ target, totals, diff, tolerance }) {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </section>

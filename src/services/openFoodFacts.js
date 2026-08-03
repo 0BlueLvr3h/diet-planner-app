@@ -314,6 +314,18 @@ function getTotalPages(json, pageSize, productsLength) {
   return productsLength >= pageSize ? null : 1;
 }
 
+// Sodio da Open Food Facts, in g per 100g.
+// OFF fornisce 'sodium_100g' oppure, sui prodotti europei (dal 2013 l'etichetta
+// riporta il SALE), 'salt_100g'. Relazione ufficiale: sale = 2.5 x sodio, quindi
+// sodio = sale / 2.5. Preferisco il sodio diretto; se manca, converto dal sale.
+function parseSodiumG(nutriments) {
+  const direct = parseMacro(nutriments?.sodium_100g);
+  if (direct !== null) return direct;
+  const salt = parseMacro(nutriments?.salt_100g);
+  if (salt !== null) return salt / 2.5;
+  return null;
+}
+
 export function normalizeOpenFoodFactsProduct(product) {
   const nutriments = product?.nutriments ?? {};
   const code = product?.code || product?.id || '';
@@ -338,7 +350,10 @@ export function normalizeOpenFoodFactsProduct(product) {
       kcal: parseMacro(nutriments['energy-kcal_100g']),
       protein: parseMacro(nutriments.proteins_100g),
       carbs: parseMacro(nutriments.carbohydrates_100g),
-      fat: parseMacro(nutriments.fat_100g)
+      fat: parseMacro(nutriments.fat_100g),
+      // sodio in g/100g (null se OFF non lo ha): NON influisce su selectable,
+      // e' solo un tracciamento aggiuntivo. Convertito da sale se necessario.
+      sodium: parseSodiumG(nutriments) ?? 0
     }
   };
 

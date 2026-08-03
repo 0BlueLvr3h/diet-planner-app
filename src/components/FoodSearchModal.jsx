@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MACRO_KEYS, MACRO_UNITS } from '../constants';
+import { MACRO_KEYS, MACRO_LABELS, MACRO_UNITS } from '../constants';
 import { MACRO_LABELS_SHORT } from './MacroBadge';
 import { getOpenFoodFactsProductByBarcode, searchOpenFoodFacts } from '../services/openFoodFacts';
 import {
@@ -242,6 +242,22 @@ function CustomFoodForm({ form, setForm, error, onSubmit }) {
           </label>
         ))}
       </div>
+
+      <label className="mt-3 block max-w-xs space-y-1">
+        <span className="text-sm font-bold text-slate-700">
+          Sodio / 100g <span className="font-normal text-slate-400">(g — opzionale)</span>
+        </span>
+        <input
+          type="number"
+          min="0"
+          step="0.001"
+          value={form.sodium}
+          onChange={(event) => updateField('sodium', event.target.value)}
+          placeholder="es. 0.4"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right font-black outline-none ring-indigo-200 focus:ring-4"
+        />
+        <span className="text-xs text-slate-400">Se sull'etichetta c'è il sale, dividi per 2.5.</span>
+      </label>
 
       <div className="mt-4 flex justify-end">
         <button type="submit" className="btn-primary">

@@ -14,7 +14,7 @@ import WeekPlanner from './components/WeekPlanner';
 import { BARCODE_BACKEND_URL, ENABLE_BARCODE_STREAM } from './constants';
 import { createInitialState, dietReducer } from './state/dietReducer';
 import { getOpenFoodFactsProductByBarcode } from './services/openFoodFacts';
-import { calculateDiff, calculateVariantTotals } from './utils/macros';
+import { calculateDiff, calculateVariantSodiumMg, calculateVariantTotals } from './utils/macros';
 import { buildPersistedDocument, getStoredMetadata, parseImportedDietState, saveStateToStorage } from './utils/storage';
 import { apiGetState, apiPutState } from './services/api';
 
@@ -56,6 +56,7 @@ export default function App({ username, onLogout }) {
   );
 
   const totals = useMemo(() => calculateVariantTotals(activeVariant), [activeVariant]);
+  const sodiumMg = useMemo(() => calculateVariantSodiumMg(activeVariant), [activeVariant]);
   const diff = useMemo(() => calculateDiff(state.target, totals), [state.target, totals]);
 
   // dispatch "tracciato": prima di applicare l'azione salva lo stato corrente
@@ -331,7 +332,7 @@ export default function App({ username, onLogout }) {
 
         {section === 'diet' && (
           <>
-            <DiffPanel target={state.target} totals={totals} diff={diff} tolerance={state.tolerance} />
+            <DiffPanel target={state.target} totals={totals} diff={diff} tolerance={state.tolerance} sodiumMg={sodiumMg} />
             <VariantTabs variants={state.variants} activeVariantId={state.activeVariantId} dispatch={dispatchTracked} />
 
             <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between lg:p-5">

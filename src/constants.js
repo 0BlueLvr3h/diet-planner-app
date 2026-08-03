@@ -7,6 +7,8 @@ export const MACRO_LABELS = {
   fat: 'Grassi'
 };
 
+export const SODIUM_LIMIT_MG = 2000; // soglia consigliata di sodio al giorno
+
 export const MACRO_UNITS = {
   kcal: 'kcal',
   protein: 'g',

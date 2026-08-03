@@ -44,6 +44,20 @@ export function calculateVariantTotals(variant) {
   }, emptyMacros());
 }
 
+// Sodio totale della variante, in mg. E' fuori da MACRO_KEYS apposta: non entra
+// nel bilancio dei macro, si traccia solo per l'avviso sulla soglia giornaliera.
+// I valori di Open Food Facts sono in grammi per 100g -> converto in mg.
+export function calculateVariantSodiumMg(variant) {
+  const totalGrams = (variant?.meals ?? []).reduce((sum, meal) => {
+    return sum + (meal?.foods ?? []).reduce((mealSum, food) => {
+      const sodiumPer100g = toNumber(food?.macrosPer100g?.sodium, 0); // g/100g
+      const grams = toNumber(food?.grams, 0);
+      return mealSum + (sodiumPer100g * grams) / 100;
+    }, 0);
+  }, 0);
+  return totalGrams * 1000; // g -> mg
+}
+
 // Diff = totale variante - target. Esempio: 1880 - 1900 = -20 kcal.
 export function calculateDiff(target, totals) {
   return MACRO_KEYS.reduce((diff, key) => {
