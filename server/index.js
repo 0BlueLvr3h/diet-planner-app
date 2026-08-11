@@ -164,7 +164,14 @@ app.post('/api/telegram/send', requireAuth, async (req, res) => {
     const row = db.prepare('SELECT state FROM user_state WHERE user_id = ?').get(req.user.id);
     let chatId = null;
     if (row) {
-      try { chatId = JSON.parse(row.state)?.telegramChatId ?? null; } catch { chatId = null; }
+      try {
+        const parsed = JSON.parse(row.state);
+        // lo stato salvato puo' essere il documento completo { app, state: {...} }
+        // oppure lo stato nudo: cerco telegramChatId in entrambi i livelli.
+        chatId = parsed?.telegramChatId ?? parsed?.state?.telegramChatId ?? null;
+      } catch {
+        chatId = null;
+      }
     }
     if (!chatId) {
       return res.status(400).json({ error: 'Telegram non collegato. Collega prima il tuo account.' });
