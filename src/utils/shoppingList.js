@@ -19,7 +19,9 @@ export function buildShoppingRows(state, dayKeys) {
   const variantsById = new Map((state?.variants || []).map((v) => [v.id, v]));
 
   const days = dayKeys && dayKeys.length ? dayKeys : Object.keys(assignments);
-  const variantIds = [...new Set(days.map((d) => assignments[d]).filter(Boolean))];
+  // NON deduplico: se la stessa variante e' su piu' giorni (es. Variante A su lun+mar),
+  // ogni giorno va contato. La spesa riflette i GIORNI, non le varianti uniche.
+  const variantIds = days.map((d) => assignments[d]).filter(Boolean);
 
   const grouped = new Map(); // key -> { name, grams, kcalPer100g }
   for (const vid of variantIds) {
