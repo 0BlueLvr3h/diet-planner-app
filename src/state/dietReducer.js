@@ -146,7 +146,8 @@ export function normalizeAppState(candidate) {
     customFoods: normalizeCustomFoods(candidate.customFoods ?? []).map(migrateFoodSodium),
     barcodeFoods: normalizeBarcodeFoods(candidate.barcodeFoods ?? []).map(migrateFoodSodium),
     weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {},
-    calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null
+    calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null,
+    telegramChatId: typeof candidate.telegramChatId === 'string' ? candidate.telegramChatId : null
   };
 }
 
@@ -427,6 +428,10 @@ export function dietReducer(state, action) {
         ...state,
         barcodeFoods: upsertBarcodeFood(state.barcodeFoods ?? [], action.payload.food)
       };
+    }
+
+    case 'SET_TELEGRAM_CHAT_ID': {
+      return { ...state, telegramChatId: (action.payload.chatId || '').trim() || null };
     }
 
     case 'SET_BARCODE_FOOD_SODIUM': {

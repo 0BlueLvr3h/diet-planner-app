@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MACRO_KEYS } from '../constants';
 import { calculateVariantTotals, calculateVariantSodiumMg, roundMacro, sodiumStatus } from '../utils/macros';
 import { SODIUM_LIMIT_MG, SODIUM_WARN_MG } from '../constants';
@@ -54,7 +55,22 @@ function MacroStrip({ totals, dark, sodiumMg = null }) {
   );
 }
 
-export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpenVariant }) {
+export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpenVariant, onSendTelegram, telegramLinked }) {
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState('');
+
+  async function inviaLista() {
+    setSending(true);
+    setSendMsg('');
+    try {
+      await onSendTelegram();
+      setSendMsg('Lista inviata su Telegram \u2713');
+    } catch (e) {
+      setSendMsg(e.message || 'Invio fallito');
+    } finally {
+      setSending(false);
+    }
+  }
   const assignments = weekAssignments || {};
   const variantById = new Map(variants.map((v) => [v.id, v]));
   const totalsById = new Map(variants.map((v) => [v.id, calculateVariantTotals(v)]));
@@ -118,6 +134,17 @@ export default function WeekPlanner({ weekAssignments, variants, dispatch, onOpe
           <p className="text-sm text-slate-500">
             Assegna una variante a ogni giorno: vedi subito i macro e apri il modello con un tocco.
           </p>
+          <div className="mt-3">
+            <button onClick={inviaLista} disabled={sending} className="btn-secondary disabled:opacity-60">
+              {sending ? 'Invio…' : '📤 Manda lista spesa'}
+            </button>
+            {!telegramLinked && (
+              <p className="mt-1 text-xs text-slate-400">
+                Prima collega Telegram in Impostazioni.
+              </p>
+            )}
+            {sendMsg && <p className="mt-1 text-sm font-semibold text-slate-700">{sendMsg}</p>}
+          </div>
         </div>
 
         <div className="space-y-2">

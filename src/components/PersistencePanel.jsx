@@ -20,9 +20,16 @@ function makeBackupFilename() {
   return `${BACKUP_FILE_PREFIX}-${stamp}.json`;
 }
 
-export default function PersistencePanel({ state, saveStatus, lastSavedAt, storageError, onImportState, onResetState }) {
+export default function PersistencePanel({ state, saveStatus, lastSavedAt, storageError, onImportState, onResetState, dispatch }) {
   const fileInputRef = useRef(null);
   const [importError, setImportError] = useState('');
+  const [chatId, setChatId] = useState(state.telegramChatId || '');
+
+  const BOT_URL = 'https://t.me/DietaAppShoppingListBot';
+
+  function salvaChatId() {
+    dispatch({ type: 'SET_TELEGRAM_CHAT_ID', payload: { chatId: chatId.trim() } });
+  }
 
   function exportJson() {
     const json = exportDietState(state);
@@ -65,6 +72,7 @@ export default function PersistencePanel({ state, saveStatus, lastSavedAt, stora
   }
 
   return (
+    <>
     <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-soft lg:p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -116,5 +124,36 @@ export default function PersistencePanel({ state, saveStatus, lastSavedAt, stora
         </div>
       </div>
     </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-soft lg:p-5">
+        <h3 className="font-black text-slate-900">Collega Telegram</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Ricevi la lista della spesa come messaggio sul telefono.
+        </p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+          <li>
+            <a href={BOT_URL} target="_blank" rel="noreferrer" className="font-bold text-indigo-600 underline">
+              Apri il bot
+            </a>{' '}
+            e premi <strong>Avvia</strong> (o scrivi /start).
+          </li>
+          <li>Copia il codice che ti risponde e incollalo qui sotto.</li>
+        </ol>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={chatId}
+            onChange={(event) => setChatId(event.target.value)}
+            placeholder="Codice Telegram (es. 123456789)"
+            className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 font-semibold outline-none ring-indigo-200 focus:ring-4"
+          />
+          <button onClick={salvaChatId} className="btn-primary">Salva</button>
+        </div>
+        {state.telegramChatId ? (
+          <p className="mt-2 text-sm font-semibold text-emerald-700">Telegram collegato ✓</p>
+        ) : (
+          <p className="mt-2 text-sm text-slate-400">Non ancora collegato.</p>
+        )}
+      </section>
+    </>
   );
 }

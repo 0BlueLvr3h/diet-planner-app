@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import db from './db.js';
+import { sendTelegramMessage, handleTelegramUpdate } from './telegram.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.resolve(__dirname, '../dist');
@@ -149,6 +150,45 @@ app.get('/api/barcode/stream', (req, res) => {
 });
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', clients: sseClients.size }));
+
+// --- Telegram ----------------------------------------------------------------
+
+// Invio della lista: protetto da login. Prende il chatId salvato NELLO STATO
+// dell'utente (state.telegramChatId) e manda il testo ricevuto dal frontend.
+app.post('/api/telegram/send', requireAuth, async (req, res) => {
+  try {
+    const text = String((req.body && req.body.text) || '').trim();
+    if (!text) return res.status(400).json({ error: 'Testo mancante.' });
+
+    // rileggo lo stato dell'utente per prendere il suo chatId (fonte di verita': il server)
+    const row = db.prepare('SELECT state FROM user_state WHERE user_id = ?').get(req.user.id);
+    let chatId = null;
+    if (row) {
+      try { chatId = JSON.parse(row.state)?.telegramChatId ?? null; } catch { chatId = null; }
+    }
+    if (!chatId) {
+      return res.status(400).json({ error: 'Telegram non collegato. Collega prima il tuo account.' });
+    }
+
+    await sendTelegramMessage(chatId, text);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(502).json({ error: err.message || 'Invio Telegram fallito.' });
+  }
+});
+
+// Webhook del bot: Telegram chiama QUESTA rotta quando qualcuno scrive al bot.
+// L'URL contiene un segreto (lo stesso token) cosi' nessun altro puo' chiamarla.
+app.post('/api/telegram/webhook/:secret', (req, res) => {
+  if (req.params.secret !== process.env.TELEGRAM_BOT_TOKEN) {
+    return res.status(403).end();
+  }
+  // rispondo subito 200 a Telegram, gestisco l'update senza bloccare
+  res.json({ ok: true });
+  handleTelegramUpdate(req.body).catch(() => {
+    // non voglio che un errore qui faccia ritentare Telegram all'infinito
+  });
+});
 
 // --- Frontend React compilato ------------------------------------------------
 app.use(express.static(distPath));

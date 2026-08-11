@@ -6,6 +6,8 @@ import BarcodeFoodMenu from './components/BarcodeFoodMenu';
 import DiffPanel from './components/DiffPanel';
 import FoodSearchModal from './components/FoodSearchModal';
 import FoodLibrary from './components/FoodLibrary';
+import { buildShoppingRows, formatShoppingMessage } from './utils/shoppingList';
+import { apiSendTelegram } from './services/api';
 import MealCard from './components/MealCard';
 import PersistencePanel from './components/PersistencePanel';
 import SaveBar from './components/SaveBar';
@@ -289,6 +291,13 @@ export default function App({ username, onLogout }) {
     });
   }
 
+  // Costruisce la lista della spesa dai giorni assegnati e la manda su Telegram.
+  async function handleSendShoppingList() {
+    const rows = buildShoppingRows(state, []); // [] = tutti i giorni assegnati
+    const text = formatShoppingMessage(rows);
+    await apiSendTelegram(text);
+  }
+
   async function handleSaveNow() {
     setSaveStatus('saving');
     await doSave();
@@ -506,6 +515,8 @@ export default function App({ username, onLogout }) {
               dispatchTracked({ type: 'SET_ACTIVE_VARIANT', payload: { variantId } });
               setSection('diet');
             }}
+            onSendTelegram={handleSendShoppingList}
+            telegramLinked={Boolean(state.telegramChatId)}
           />
         )}
 
@@ -519,6 +530,7 @@ export default function App({ username, onLogout }) {
               storageError={storageError}
               onImportState={importState}
               onResetState={resetState}
+              dispatch={dispatchTracked}
             />
           </>
         )}

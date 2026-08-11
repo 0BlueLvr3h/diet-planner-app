@@ -35,7 +35,8 @@ function normalizePersistedState(raw) {
       ? candidate.barcodeFoods.map(normalizeBarcodeFood)
       : [],
     weekAssignments: candidate.weekAssignments && typeof candidate.weekAssignments === 'object' ? candidate.weekAssignments : {},
-    calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null
+    calculatorProfile: candidate.calculatorProfile && typeof candidate.calculatorProfile === 'object' ? candidate.calculatorProfile : null,
+    telegramChatId: typeof candidate.telegramChatId === 'string' ? candidate.telegramChatId : null
   };
 }
 
@@ -52,7 +53,8 @@ export function buildPersistedDocument(state) {
       customFoods: state.customFoods ?? [],
       barcodeFoods: state.barcodeFoods ?? [],
       weekAssignments: state.weekAssignments ?? {},
-      calculatorProfile: state.calculatorProfile ?? null
+      calculatorProfile: state.calculatorProfile ?? null,
+      telegramChatId: state.telegramChatId ?? null
     })
   };
 }

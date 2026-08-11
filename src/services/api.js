@@ -10,6 +10,18 @@ async function request(path, options = {}) {
   });
 }
 
+export async function apiSendTelegram(text) {
+  const res = await request('/api/telegram/send', {
+    method: 'POST',
+    body: JSON.stringify({ text })
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Invio fallito');
+  }
+  return res.json();
+}
+
 export async function apiMe() {
   const res = await request('/api/auth/me');
   if (!res.ok) return null;
